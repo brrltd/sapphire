@@ -1009,12 +1009,12 @@ abstract class SS_Query implements Iterator {
 	 * The number of the current row in the interator.
 	 * @var int
 	 */
-	private $rowNum = -1;
+	protected $rowNum = -1;
 	
 	/**
 	 * Flag to keep track of whether iteration has begun, to prevent unnecessary seeks
 	 */
-	private $queryHasBegun = false;
+	protected $queryHasBegun = false;
 
 	/**
 	 * Return an array containing all the values from a specific column. If no column is set, then the first will be

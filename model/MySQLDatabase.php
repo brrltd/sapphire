@@ -12,23 +12,23 @@ class MySQLDatabase extends SS_Database {
 	 * Connection to the DBMS.
 	 * @var resource
 	 */
-	private $dbConn;
+	protected $dbConn;
 
 	/**
 	 * True if we are connected to a database.
 	 * @var boolean
 	 */
-	private $active;
+	protected $active;
 
 	/**
 	 * The name of the database.
 	 * @var string
 	 */
-	private $database;
+	protected $database;
 
-	private static $connection_charset = null;
+	protected static $connection_charset = null;
 
-	private $supportsTransactions = true;
+	protected $supportsTransactions = true;
 
 	/**
 	 * Sets the character set for the MySQL database connection.
@@ -54,29 +54,55 @@ class MySQLDatabase extends SS_Database {
 	 *  - timezone: (optional) The timezone offset. For example: +12:00, "Pacific/Auckland", or "SYSTEM"
 	 */
 	public function __construct($parameters) {
-		$this->dbConn = new MySQLi($parameters['server'], $parameters['username'], $parameters['password']);
 		
-		if($this->dbConn->connect_error) {
-			$this->databaseError("Couldn't connect to MySQL database | " . $this->dbConn->connect_error);
-		}
+		$this->dbConn = $this->getConnect($parameters);
 		
-		$this->query("SET sql_mode = 'ANSI'");
-
-		if(self::$connection_charset) {
-			$this->dbConn->set_charset(self::$connection_charset);
+		$this->setSQLMode('ANSI');
+		$this->selectDatabase($parameters['database']);
+		
+		if(isset($parameters['timezone'])) {
+			$this->selectTimezone($parameters['timezone']);
 		}
-
-		$this->active = $this->dbConn->select_db($parameters['database']);
-		$this->database = $parameters['database'];
-
-		if(isset($parameters['timezone'])) $this->query(sprintf("SET SESSION time_zone = '%s'", $parameters['timezone']));
+	}
+	
+	public function setSQLMode($mode) {
+		if(empty($mode)) return;
+		$this->query(sprintf(
+			"SET sql_mode = '%s'",
+			$this->addslashes($mode)
+		));
+	}
+	
+	/**
+	 * Sets the system timezone for the database connection
+	 * @param string $timezone
+	 */
+	public function selectTimezone($timezone) {
+		if(empty($timezone)) return;
+		$this->query(sprintf(
+			"SET SESSION time_zone = '%s'",
+			$this->addslashes($timezone)
+		));
 	}
 
 	/**
-	 * Not implemented, needed for PDO
+	 * Generates a new connection with the given parameters
+	 * @see MySQLDatabase::__construct() for a description of the parameters
+	 * @parameters array 
+	 * @return resource
 	 */
 	public function getConnect($parameters) {
-		return null;
+		$connection = new MySQLi($parameters['server'], $parameters['username'], $parameters['password']);
+		
+		if($connection->connect_error) {
+			$this->databaseError("Couldn't connect to MySQL database | " . $connection->connect_error);
+		}
+		
+		if(self::$connection_charset) {
+			$connection->set_charset(self::$connection_charset);
+		}
+		
+		return $connection;
 	}
 
 	/**
@@ -124,7 +150,7 @@ class MySQLDatabase extends SS_Database {
 			Debug::message("\n$sql\n{$endtime}ms\n", false);
 		}
 
-		if(!$handle && $errorLevel) $this->databaseError("Couldn't run query: $sql | " . $this->dbConn->error, $errorLevel);
+		if(!$handle && $errorLevel) $this->databaseError("Couldn't run query: $sql | " . $this->getLastError(), $errorLevel);
 		return new MySQLQuery($this, $handle);
 	}
 
@@ -137,13 +163,8 @@ class MySQLDatabase extends SS_Database {
 	}
 
 	public function createDatabase() {
-		$this->query("CREATE DATABASE \"$this->database\"");
-		$this->query("USE \"$this->database\"");
-
-		$this->tableList = $this->fieldList = $this->indexList = null;
-
-		$this->active = $this->dbConn->select_db($this->database);
-		return $this->active;
+		$this->query("CREATE DATABASE \"{$this->database}\"");
+		return $this->selectDatabase($this->database);
 	}
 
 	/**
@@ -187,8 +208,8 @@ class MySQLDatabase extends SS_Database {
 	 * Returns true if the named database exists.
 	 */
 	public function databaseExists($name) {
-		$SQL_name = Convert::raw2sql($name);
-		return $this->query("SHOW DATABASES LIKE '$SQL_name'")->value() ? true : false;
+		$SQL_name = $this->quote($name);
+		return $this->query("SHOW DATABASES LIKE $SQL_name")->value() ? true : false;
 	}
 
 	/**
@@ -557,6 +578,10 @@ class MySQLDatabase extends SS_Database {
 	public function affectedRows() {
 		return $this->dbConn->affected_rows;
 	}
+	
+	public function getLastError() {
+		return $this->dbConn->error;
+	}
 
 	public function databaseError($msg, $errorLevel = E_USER_ERROR) {
 		// try to extract and format query
@@ -924,6 +949,11 @@ class MySQLDatabase extends SS_Database {
 	 */
 	public function addslashes($value){
 		return $this->dbConn->real_escape_string($value);
+	}
+	
+	public function quote($value) {
+		$value = $this->addslashes($value);
+		return "'$value'";
 	}
 
 	/*
