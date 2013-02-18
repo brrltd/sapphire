@@ -58,6 +58,10 @@ class Form extends RequestHandler {
 	
 	protected $actions;
 	
+	/**
+	 *
+	 * @var Controller
+	 */
 	protected $controller;
 	
 	protected $name;

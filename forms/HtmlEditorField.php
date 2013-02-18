@@ -124,7 +124,7 @@ class HtmlEditorField extends TextareaField {
 						if(!DataObject::get_by_id('SiteTree', $ID))  $record->HasBrokenLink = true;
 
 					} else if(substr($href, 0, strlen(ASSETS_DIR) + 1) == ASSETS_DIR.'/') {
-						$candidateFile = File::find(Convert::raw2sql(urldecode($href)));
+						$candidateFile = File::find(urldecode($href));
 						if($candidateFile) {
 							$linkedFiles[] = $candidateFile->ID;
 						} else {
@@ -179,9 +179,11 @@ class HtmlEditorField extends TextareaField {
 					$this->name, $record->ID));
 
 				if($linkedPages) foreach($linkedPages as $item) {
-					$SQL_fieldName = Convert::raw2sql($this->name);
-					DB::query("INSERT INTO \"SiteTree_LinkTracking\" (\"SiteTreeID\",\"ChildID\", \"FieldName\")
-						VALUES ($record->ID, $item, '$SQL_fieldName')");
+					$fieldName = $this->name;
+					DB::preparedQuery(
+						'INSERT INTO "SiteTree_LinkTracking" ("SiteTreeID", "ChildID", "FieldName") VALUES (?, ?, ?)',
+						array($record->ID, $item, $fieldName)
+					);
 				}
 			}
 		
@@ -283,7 +285,9 @@ class HtmlEditorField_Toolbar extends RequestHandler {
 	 * @return callback
 	 */	
 	public function siteTreeSearchCallback($sourceObject, $labelField, $search) {
-		return DataObject::get($sourceObject, "\"MenuTitle\" LIKE '%$search%' OR \"Title\" LIKE '%$search%'");
+		return DataObject::get($sourceObject, array(
+			'"MenuTitle" LIKE ? OR "Title" LIKE ?' => array("%{$search}%", "%{$search}%")
+		));
 	}
 	
 	/**
@@ -773,12 +777,8 @@ class HtmlEditorField_Toolbar extends RequestHandler {
 	 * @return DataList
 	 */
 	protected function getFiles($parentID = null) {
-		// TODO Use array('Filename:EndsWith' => $exts) once that's supported
 		$exts = $this->getAllowedExtensions();
-		$wheres = array();
-		foreach($exts as $ext) $wheres[] = '"Filename" LIKE \'%.' . $ext . '\'';
-
-		$files = File::get()->where(implode(' OR ', $wheres));
+		$files = File::get()->filter('Filename:EndsWith', $exts);
 		
 		// Limit by folder (if required)
 		if($parentID) {

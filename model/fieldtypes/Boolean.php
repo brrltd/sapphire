@@ -62,26 +62,27 @@ class Boolean extends DBField {
 		return $field;
 	}
 
-	/**
-	 * Return an encoding of the given value suitable for inclusion in a SQL statement.
-	 * If necessary, this should include quotes.
-	 */
-	public function prepValueForDB($value) {
-		if(strpos($value, '[')!==false)
-			return Convert::raw2sql($value);
-		else {
-			if($value && strtolower($value) != 'f') {
-				return "'1'";
-			} else {
-				return "'0'";
-			}
-		}
+	public function nullValue() {
+		return false;
 	}
 
-	public function nullValue() {
-		return "'0'";
+	public function prepValueForDB($value) {
+		if(is_bool($value)) {
+			return $value;
+		} else if(empty($value)) {
+			return false;
+		} else if(is_string($value)){
+			switch(strtolower($value)) {
+				case 'false':
+				case 'f':
+					return false;
+				case 'true':
+				case 't':
+					return true;
+			}
+		}
+		return (bool)$value;
 	}
-	
 }
 
 

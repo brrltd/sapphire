@@ -835,14 +835,14 @@ class LeftAndMain extends Controller implements PermissionProvider {
 		$className = $this->stat('tree_class');
 
 		// Existing or new record?
-		$SQL_id = Convert::raw2sql($data['ID']);
-		if(substr($SQL_id,0,3) != 'new') {
-			$record = DataObject::get_by_id($className, $SQL_id);
+		$id = $data['ID'];
+		if(substr($id,0,3) != 'new') {
+			$record = DataObject::get_by_id($className, $id);
 			if($record && !$record->canEdit()) return Security::permissionFailure($this);
-			if(!$record || !$record->ID) throw new HTTPResponse_Exception("Bad record ID #" . (int)$data['ID'], 404);
+			if(!$record || !$record->ID) throw new HTTPResponse_Exception("Bad record ID #$id", 404);
 		} else {
 			if(!singleton($this->stat('tree_class'))->canCreate()) return Security::permissionFailure($this);
-			$record = $this->getNewItem($SQL_id, false);
+			$record = $this->getNewItem($id, false);
 		}
 		
 		// save form data into record
@@ -858,9 +858,10 @@ class LeftAndMain extends Controller implements PermissionProvider {
 	public function delete($data, $form) {
 		$className = $this->stat('tree_class');
 		
-		$record = DataObject::get_by_id($className, Convert::raw2sql($data['ID']));
+		$id = $data['ID'];
+		$record = DataObject::get_by_id($className, $id);
 		if($record && !$record->canDelete()) return Security::permissionFailure();
-		if(!$record || !$record->ID) throw new HTTPResponse_Exception("Bad record ID #" . (int)$data['ID'], 404);
+		if(!$record || !$record->ID) throw new HTTPResponse_Exception("Bad record ID #$id", 404);
 		
 		$record->delete();
 
@@ -938,7 +939,9 @@ class LeftAndMain extends Controller implements PermissionProvider {
 			
 			// Update all dependent pages
 			if(class_exists('VirtualPage')) {
-				if($virtualPages = DataObject::get("VirtualPage", "\"CopyContentFromID\" = $node->ID")) {
+				if($virtualPages = VirtualPage::get()->where(array(
+					'"VirtualPage"."CopyContentFromID"' => $node->ID
+				))) {
 					foreach($virtualPages as $virtualPage) {
 						$statusUpdates['modified'][$virtualPage->ID] = array(
 							'TreeTitle' => $virtualPage->TreeTitle()
@@ -965,8 +968,10 @@ class LeftAndMain extends Controller implements PermissionProvider {
 					// Nodes that weren't "actually moved" shouldn't be registered as 
 					// having been edited; do a direct SQL update instead
 					++$counter;
-					DB::query(sprintf("UPDATE \"%s\" SET \"Sort\" = %d WHERE \"ID\" = '%d'",
-						$className, $counter, $id));
+					DB::preparedQuery(
+						"UPDATE \"$className\" SET \"Sort\" = ? WHERE \"ID\" = ?",
+						array($counter, $id)
+					);
 				}
 			}
 			
@@ -1573,8 +1578,11 @@ class LeftAndMainMarkingFilter {
 		// We need to recurse up the tree, 
 		// finding ParentIDs for each ID until we run out of parents
 		while (!empty($parents)) {
-			$res = DB::query('SELECT "ParentID", "ID" FROM "SiteTree"'
-				. ' WHERE "ID" in ('.implode(',',array_keys($parents)).')');
+			$parentsClause = DB::placeholders($parents);
+			$res = DB::preparedQuery(
+				"SELECT \"ParentID\", \"ID\" FROM \"SiteTree\" WHERE \"ID\" in ($parentsClause)",
+				array_keys($parents)
+			);
 			$parents = array();
 
 			foreach($res as $row) {
@@ -1588,15 +1596,12 @@ class LeftAndMainMarkingFilter {
 	protected function getQuery($params) {
 		$where = array();
 		
-		$SQL_params = Convert::raw2sql($params);
-		if(isset($SQL_params['ID'])) unset($SQL_params['ID']);
-		foreach($SQL_params as $name => $val) {
-			switch($name) {
-				default:
-					// Partial string match against a variety of fields 
-					if(!empty($val) && singleton("SiteTree")->hasDatabaseField($name)) {
-						$where[] = "\"$name\" LIKE '%$val%'";
-					}
+		if(isset($params['ID'])) unset($params['ID']);
+		foreach($params as $name => $val) {
+			// Partial string match against a variety of fields 
+			if(!empty($val) && singleton("SiteTree")->hasDatabaseField($name)) {
+				$predicate = sprintf('"%s" LIKE ?', $name);
+				$where[$predicate] = "%$val%";
 			}
 		}
 		

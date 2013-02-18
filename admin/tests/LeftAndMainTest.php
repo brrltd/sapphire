@@ -25,7 +25,9 @@ class LeftAndMainTest extends FunctionalTest {
 		$this->loginWithPermission('ADMIN');
 		
 		// forcing sorting for non-MySQL		
-		$rootPages = DataObject::get('LeftAndMainTest_Object', '"ParentID" = 0', '"ID"');
+		$rootPages = LeftAndMainTest_Object::get()->where(array(
+			'"LeftAndMainTest_Object"."ParentID"' => 0
+		))->sort('"ID"');
 		$siblingIDs = $rootPages->column('ID');
 		$page1 = $rootPages->offsetGet(0);
 		$page2 = $rootPages->offsetGet(1);

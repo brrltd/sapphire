@@ -128,18 +128,24 @@ abstract class DBField extends ViewableData {
 	}
 	
 	/**
-	 * Return an encoding of the given value suitable
-	 * for inclusion in a SQL statement. If necessary,
-	 * this should include quotes.
+	 * Return the transformed value ready to be sent to the database. This value
+	 * will be escaped automatically by the prepared query processor, so it
+	 * should not be escaped or quoted at all.
+	 * 
+	 * The field values could also be in paramaterised format, such as
+	 * array('MAX(?,?)' => array(42, 69)), allowing the use of raw SQL values such as 
+	 * array('NOW()' => array()).
+	 * 
+	 * @see SQLWriteExpression::addAssignments for syntax examples
 	 * 
 	 * @param $value mixed The value to check
-	 * @return string The encoded value
+	 * @return mixed The raw value, or escaped parameterised details
 	 */
 	public function prepValueForDB($value) {
 		if($value === null || $value === "" || $value === false) {
-			return "null";
+			return null;
 		} else {
-			return DB::getConn()->prepStringForDB($value);
+			return $value;
 		}
 	}
 	
@@ -221,9 +227,11 @@ abstract class DBField extends ViewableData {
 	/**
 	 * Returns the value to be set in the database to blank this field.
 	 * Usually it's a choice between null, 0, and ''
+	 * 
+	 * @return mixed 
 	 */
 	public function nullValue() {
-		return "null";
+		return null;
 	}
 
 	/**

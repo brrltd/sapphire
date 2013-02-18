@@ -30,23 +30,26 @@ class MemberAuthenticator extends Authenticator {
 	 * @see Security::setDefaultAdmin()
 	 */
 	public static function authenticate($RAW_data, Form $form = null) {
-		if(array_key_exists('Email', $RAW_data) && $RAW_data['Email']){
-			$SQL_user = Convert::raw2sql($RAW_data['Email']);
+		if(!empty($RAW_data['Email'])) {
+			$userEmail = $RAW_data['Email'];
+			if(is_array($userEmail)) {
+				user_error("Bad email passed to MemberAuthenticator::authenticate(): $userEmail", E_USER_WARNING);
+				return false;
+			}
 		} else {
 			return false;
 		}
 
-		$isLockedOut = false;
 		$result = null;
 
 		// Default login (see Security::setDefaultAdmin())
-		if(Security::check_default_admin($RAW_data['Email'], $RAW_data['Password'])) {
+		if(Security::check_default_admin($userEmail, $RAW_data['Password'])) {
 			$member = Security::findAnAdministrator();
 		} else {
-			$member = DataObject::get_one(
-				"Member", 
-				"\"" . Member::get_unique_identifier_field() . "\" = '$SQL_user' AND \"Password\" IS NOT NULL"
-			);
+			$member = DataObject::get_one("Member", array(
+				'"'.Member::get_unique_identifier_field().'"' => $userEmail,
+				'"Member"."Password" IS NOT NULL'
+			));
 
 			if($member) {
 				$result = $member->checkPassword($RAW_data['Password']);
@@ -75,10 +78,9 @@ class MemberAuthenticator extends Authenticator {
 				$member->extend('authenticated');
 			} else {
 				// failed login - we're trying to see if a user exists with this email (disregarding wrong passwords)
-				$existingMember = DataObject::get_one(
-					"Member",
-					"\"" . Member::get_unique_identifier_field() . "\" = '$SQL_user'"
-				);
+				$existingMember = DataObject::get_one("Member", array(
+					'"'.Member::get_unique_identifier_field().'"' => $userEmail
+				));
 				if($existingMember) {
 					$attempt->MemberID = $existingMember->ID;
 					
@@ -91,12 +93,8 @@ class MemberAuthenticator extends Authenticator {
 				}
 				$attempt->Status = 'Failure';
 			}
-			if(is_array($RAW_data['Email'])) {
-				user_error("Bad email passed to MemberAuthenticator::authenticate(): $RAW_data[Email]", E_USER_WARNING);
-				return false;
-			}
 			
-			$attempt->Email = $RAW_data['Email'];
+			$attempt->Email = $userEmail;
 			$attempt->IP = Controller::curr()->getRequest()->getIP();
 			$attempt->write();
 		}

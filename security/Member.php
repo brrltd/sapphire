@@ -378,9 +378,8 @@ class Member extends DataObject implements TemplateGlobalProvider {
 		
 		if(strpos(Cookie::get('alc_enc'), ':') && !Session::get("loggedInAs")) {
 			list($uid, $token) = explode(':', Cookie::get('alc_enc'), 2);
-			$SQL_uid = Convert::raw2sql($uid);
-
-			$member = DataObject::get_one("Member", "\"Member\".\"ID\" = '$SQL_uid'");
+			
+			$member = DataObject::get_by_id("Member", $uid);
 
 			// check if autologin token matches
 			if($member) {
@@ -467,7 +466,9 @@ class Member extends DataObject implements TemplateGlobalProvider {
 			$generator = new RandomGenerator();
 			$token = $generator->randomToken();
 			$hash = $this->encryptWithUserSettings($token);
-		} while(DataObject::get_one('Member', "\"AutoLoginHash\" = '$hash'"));
+		} while(DataObject::get_one('Member', array(
+			'"Member"."AutoLoginHash"' => $hash
+		)));
 
 		$this->AutoLoginHash = $hash;
 		$this->AutoLoginExpired = date('Y-m-d', time() + (86400 * $lifetime));
@@ -486,30 +487,27 @@ class Member extends DataObject implements TemplateGlobalProvider {
 	 */
 	public function validateAutoLoginToken($autologinToken) {
 		$hash = $this->encryptWithUserSettings($autologinToken);
-
-		$member = DataObject::get_one(
-			'Member',
-			"\"AutoLoginHash\"='" . $hash . "' AND \"AutoLoginExpired\" > " . DB::getConn()->now()
-		);
-
+		$member = self::member_from_autologinhash($hash, false);
 		return (bool)$member;
 	}
 
 	/**
 	 * Return the member for the auto login hash
 	 *
+	 * @param string $hash The hash key
 	 * @param bool $login Should the member be logged in?
+	 * 
+	 * @return Member the matching member, if valid
 	 */
-	public static function member_from_autologinhash($RAW_hash, $login = false) {
-		$SQL_hash = Convert::raw2sql($RAW_hash);
+	public static function member_from_autologinhash($hash, $login = false) {
+		
+		$nowExpression = DB::getConn()->now();
+		$member = DataObject::get_one('Member', array(
+			"\"Member\".\"AutoLoginHash\"" => $hash,
+			"\"Member\".\"AutoLoginExpired\" > $nowExpression" // NOW() can't be parameterised
+		));
 
-		$member = DataObject::get_one(
-			'Member',
-			"\"AutoLoginHash\"='" . $SQL_hash . "' AND \"AutoLoginExpired\" > " . DB::getConn()->now()
-		);
-
-		if($login && $member)
-			$member->logIn();
+		if($login && $member) $member->logIn();
 
 		return $member;
 	}
@@ -569,7 +567,7 @@ class Member extends DataObject implements TemplateGlobalProvider {
 	public static function currentUser() {
 		$id = Member::currentUserID();
 		if($id) {
-			return DataObject::get_one("Member", "\"Member\".\"ID\" = $id", true, 1);
+			return DataObject::get_by_id("Member", $id, true);
 		}
 	}
 	
@@ -633,17 +631,14 @@ class Member extends DataObject implements TemplateGlobalProvider {
 		// but rather a last line of defense against data inconsistencies.
 		$identifierField = self::$unique_identifier_field;
 		if($this->$identifierField) {
+			
 			// Note: Same logic as Member_Validator class
-			$idClause = ($this->ID) ? sprintf(" AND \"Member\".\"ID\" <> %d", (int)$this->ID) : '';
-			$existingRecord = DataObject::get_one(
-				'Member', 
-				sprintf(
-					"\"%s\" = '%s' %s",
-					$identifierField,
-					Convert::raw2sql($this->$identifierField),
-					$idClause
-				)
-			);
+			$filter = array("\"$identifierField\"" => $this->$identifierField);
+			if($this->ID) {
+				$filter[] = array('"Member"."ID" <> ?' => $this->ID);
+			}
+			$existingRecord = DataObject::get_one('Member', $filter);
+			
 			if($existingRecord) {
 				throw new ValidationException(new ValidationResult(false, _t(
 					'Member.ValidationIdentifierFailed', 
@@ -762,8 +757,9 @@ class Member extends DataObject implements TemplateGlobalProvider {
 		if(is_numeric($group)) {
 			$groupCheckObj = DataObject::get_by_id('Group', $group);
 		} elseif(is_string($group)) {
-			$SQL_group = Convert::raw2sql($group);
-			$groupCheckObj = DataObject::get_one('Group', "\"Code\" = '{$SQL_group}'");
+			$groupCheckObj = DataObject::get_one('Group', array(
+				'"Group"."Code"' => $group
+			));
 		} elseif($group instanceof Group) {
 			$groupCheckObj = $group;
 		} else {
@@ -788,12 +784,13 @@ class Member extends DataObject implements TemplateGlobalProvider {
 	 * @param string Title of the group
 	 */
 	public function addToGroupByCode($groupcode, $title = "") {
-		$group = DataObject::get_one('Group', "\"Code\" = '" . Convert::raw2sql($groupcode). "'");
+		$group = DataObject::get_one('Group', array(
+			'"Group"."Code"' => $groupcode
+		));
 		
 		if($group) {
 			$this->Groups()->add($group);
-		}
-		else {
+		} else {
 			if(!$title) $title = $groupcode;
 			
 			$group = new Group();
@@ -1015,7 +1012,7 @@ class Member extends DataObject implements TemplateGlobalProvider {
 	 *
 	 * @param array $groups Groups to consider or NULL to use all groups with
 	 *                      CMS permissions.
-	 * @return SQLMap Returns a map of all members in the groups given that
+	 * @return SS_Map Returns a map of all members in the groups given that
 	 *                have CMS permissions.
 	 */
 	public static function mapInCMSGroups($groups = null) {
@@ -1031,14 +1028,13 @@ class Member extends DataObject implements TemplateGlobalProvider {
 			if(!empty($cmsPerms)) {
 				$perms = array_unique(array_merge($perms, array_keys($cmsPerms)));
 			}
-			
-			$SQL_perms = "'" . implode("', '", Convert::raw2sql($perms)) . "'";
-			
+						
+			$permsClause = DB::placeholders($perms);
 			$groups = DataObject::get('Group')
-				->innerJoin(
-					"Permission",
-					"\"Permission\".\"GroupID\" = \"Group\".\"ID\" AND \"Permission\".\"Code\" IN ($SQL_perms)"
-				);
+				->innerJoin("Permission", '"Permission"."GroupID" = "Group"."ID"')
+				->where(array(
+					"\"Permission\".\"Code\" IN ($permsClause)" => $perms
+				));
 		}
 
 		$groupIDList = array();
@@ -1051,14 +1047,17 @@ class Member extends DataObject implements TemplateGlobalProvider {
 			$groupIDList = $groups;
 		}
 
-		$filterClause = ($groupIDList)
-			? "\"GroupID\" IN (" . implode( ',', $groupIDList ) . ")"
-			: "";
+		$members = Member::get()
+			->innerJoin("Group_Members", '"Group_Members"."MemberID" = "Member"."ID"')
+			->innerJoin("Group", '"Group"."ID" = "Group_Members"."GroupID"');
+		if($groupIDList) {
+			$groupClause = DB::placeholders($groupIDList);
+			$members = $members->where(array(
+				"\"Group\".\"ID\" IN ($groupClause)" => $groupIDList	
+			));
+		}
 			
-		return Member::get()->where($filterClause)->sort("\"Surname\", \"FirstName\"")
-			->innerJoin("Group_Members", "\"MemberID\"=\"Member\".\"ID\"")
-			->innerJoin("Group", "\"Group\".\"ID\"=\"GroupID\"")
-			->map();
+		return $members->sort('"Member"."Surname", "Member"."FirstName"')->map();
 	}
 
 
@@ -1416,7 +1415,9 @@ class Member extends DataObject implements TemplateGlobalProvider {
  * @subpackage security
  */
 class Member_GroupSet extends ManyManyList {
+	
 	public function __construct($dataClass, $joinTable, $localKey, $foreignKey, $extraFields = array()) {
+		
 		// Bypass the many-many constructor
 		DataList::__construct($dataClass);
 
@@ -1428,15 +1429,22 @@ class Member_GroupSet extends ManyManyList {
 	
 	/**
 	 * Link this group set to a specific member.
+	 * 
+	 * Recursively selects all groups applied to this member, as well as any
+	 * parent groups of any applied groups
+	 * 
+	 * @param array|integer $id (optional) An ID or an array of IDs - if not provided, will use the current ids as per getForeignID
+	 * @return array Condition In array(SQL => parameters format)
 	 */
 	public function foreignIDFilter($id = null) {
 		if ($id === null) $id = $this->getForeignID();
 
 		// Find directly applied groups
 		$manyManyFilter = parent::foreignIDFilter($id);
-		$groupIDs = DB::query('SELECT "GroupID" FROM "Group_Members" WHERE ' . $manyManyFilter)->column();
+		$query = new SQLQuery('"Group_Members"."GroupID"', '"Group_Members"', $manyManyFilter);
+		$groupIDs = $query->execute()->column();
 
-		// Get all ancestors
+		// Get all ancestors, iteratively merging these into the master set
 		$allGroupIDs = array();
 		while($groupIDs) {
 			$allGroupIDs = array_merge($allGroupIDs, $groupIDs);
@@ -1445,15 +1453,17 @@ class Member_GroupSet extends ManyManyList {
 		}
 		
 		// Add a filter to this DataList
-		if($allGroupIDs) {
-			return "\"Group\".\"ID\" IN (" . implode(',', $allGroupIDs) .")";
-		}
-		else {
-			return "\"Group\".\"ID\" = 0";
+		if(!empty($allGroupIDs)) {
+			$allGroupIDsPlaceholders = DB::placeholders($allGroupIDs);
+			return array("\"Group\".\"ID\" IN ($allGroupIDsPlaceholders)" => $allGroupIDs);
+		} else {
+			return array('"Group"."ID"' => 0);
 		}
 	}
-
+	
 	public function foreignIDWriteFilter($id = null) {
+		// Use the ManyManyList::foreignIDFilter rather than the one
+		// in this class, otherwise we end up selecting all inherited groups
 		return parent::foreignIDFilter($id);
 	}
 }
@@ -1532,8 +1542,9 @@ class Member_Validator extends RequiredFields {
 		
 		$identifierField = Member::get_unique_identifier_field();
 		
-		$SQL_identifierField = Convert::raw2sql($data[$identifierField]);
-		$member = DataObject::get_one('Member', "\"$identifierField\" = '{$SQL_identifierField}'");
+		$member = DataObject::get_one('Member', array(
+			"\"$identifierField\"" => $data[$identifierField]
+		));
 
 		// if we are in a complex table field popup, use ctf[childID], else use ID
 		if(isset($_REQUEST['ctf']['childID'])) {

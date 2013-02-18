@@ -558,18 +558,15 @@ class Hierarchy extends DataExtension {
 	 * @return SS_List
 	 */
 	public function stageChildren($showAll = false) {
+		$baseClass = ClassInfo::baseDataClass($this->owner->class);
+		$staged = DataObject::get($baseClass)->where(array(
+			"\"{$baseClass}\".\"ParentID\" = ?" => $this->owner->ID,
+			"\"{$baseClass}\".\"ID\" != ?" => $this->owner->ID
+		));
 		if($this->owner->db('ShowInMenus')) {
-			$extraFilter = ($showAll) ? '' : " AND \"ShowInMenus\"=1";
-		} else {
-			$extraFilter = '';
+			$staged = $staged->where(array('"ShowInMenus"' => true));
 		}
 		
-		$baseClass = ClassInfo::baseDataClass($this->owner->class);
-		
-		$staged = DataObject::get($baseClass, "\"{$baseClass}\".\"ParentID\" = " 
-			. (int)$this->owner->ID . " AND \"{$baseClass}\".\"ID\" != " . (int)$this->owner->ID
-			. $extraFilter, "");
-			
 		$this->owner->extend("augmentStageChildren", $staged, $showAll);
 		return $staged;
 	}
@@ -591,13 +588,18 @@ class Hierarchy extends DataExtension {
 		$id = $this->owner->ID;
 		
 		$children = DataObject::get($baseClass)
-			->where("\"{$baseClass}\".\"ParentID\" = $id AND \"{$baseClass}\".\"ID\" != $id")
+			->where(array(
+				"\"{$baseClass}\".\"ParentID\" = ?" => $id,
+				"\"{$baseClass}\".\"ID\" != ?" => $id
+			))
 			->setDataQueryParam(array(
 				'Versioned.mode' => $onlyDeletedFromStage ? 'stage_unique' : 'stage',
 				'Versioned.stage' => 'Live'
 			));
 
-		if(!$showAll) $children = $children->where('"ShowInMenus" = 1');
+		if(!$showAll) {
+			$children = $children->where(array('"ShowInMenus"' => true));
+		}
 
 		return $children;
 	}
@@ -606,12 +608,14 @@ class Hierarchy extends DataExtension {
 	 * Get the parent of this class.
 	 * @return DataObject
 	 */
-	public function getParent($filter = '') {
+	public function getParent($filter = null) {
 		if($p = $this->owner->__get("ParentID")) {
 			$tableClasses = ClassInfo::dataClassesFor($this->owner->class);
 			$baseClass = array_shift($tableClasses);
-			$filter .= ($filter) ? " AND " : ""."\"$baseClass\".\"ID\" = $p";
-			return DataObject::get_one($this->owner->class, $filter);
+			return DataObject::get_one($this->owner->class, array(
+				array("\"$baseClass\".\"ID\"" => $p),
+				$filter
+			));
 		}
 	}
 	
@@ -676,9 +680,12 @@ class Hierarchy extends DataExtension {
 		$nextNode = null;
 		$baseClass = ClassInfo::baseDataClass($this->owner->class);
 		
-		$children = DataObject::get(ClassInfo::baseDataClass($this->owner->class),
-			"\"$baseClass\".\"ParentID\"={$this->owner->ID}" . ( ( $afterNode ) ? " AND \"Sort\" > "
-			. sprintf( '%d', $afterNode->Sort ) : "" ), '"Sort" ASC');
+		$children = DataObject::get(ClassInfo::baseDataClass($this->owner->class))
+				->where(array("\"$baseClass\".\"ParentID\" = ?" => $this->owner->ID))
+				->sort('"Sort" ASC');
+		if($afterNode) {
+			$children = $children->where(array('"Sort" > ?' => $afterNode->Sort));
+		}
 		
 		// Try all the siblings of this node after the given node
 		/*if( $siblings = DataObject::get( ClassInfo::baseDataClass($this->owner->class), 

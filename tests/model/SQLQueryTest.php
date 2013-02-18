@@ -10,22 +10,22 @@ class SQLQueryTest extends SapphireTest {
 	
 	public function testEmptyQueryReturnsNothing() {
 		$query = new SQLQuery();
-		$this->assertEquals('', $query->sql());
+		$this->assertEquals('', $query->sql($parameters));
 	}
 	
 	public function testSelectFromBasicTable() {
 		$query = new SQLQuery();
 		$query->setFrom('MyTable');
-		$this->assertEquals("SELECT * FROM MyTable", $query->sql());
+		$this->assertEquals("SELECT * FROM MyTable", $query->sql($parameters));
 		$query->addFrom('MyJoin');
-		$this->assertEquals("SELECT * FROM MyTable MyJoin", $query->sql());
+		$this->assertEquals("SELECT * FROM MyTable MyJoin", $query->sql($parameters));
 	}
 	
 	public function testSelectFromUserSpecifiedFields() {
 		$query = new SQLQuery();
 		$query->setSelect(array("Name", "Title", "Description"));
 		$query->setFrom("MyTable");
-		$this->assertEquals("SELECT Name, Title, Description FROM MyTable", $query->sql());
+		$this->assertEquals("SELECT Name, Title, Description FROM MyTable", $query->sql($parameters));
 	}
 	
 	public function testSelectWithWhereClauseFilter() {
@@ -34,20 +34,20 @@ class SQLQueryTest extends SapphireTest {
 		$query->setFrom("MyTable");
 		$query->setWhere("Name = 'Name'");
 		$query->addWhere("Meta = 'Test'");
-		$this->assertEquals("SELECT Name, Meta FROM MyTable WHERE (Name = 'Name') AND (Meta = 'Test')", $query->sql());
+		$this->assertEquals("SELECT Name, Meta FROM MyTable WHERE (Name = 'Name') AND (Meta = 'Test')", $query->sql($parameters));
 	}
 	
 	public function testSelectWithConstructorParameters() {
 		$query = new SQLQuery(array("Foo", "Bar"), "FooBarTable");
-		$this->assertEquals("SELECT Foo, Bar FROM FooBarTable", $query->sql());
+		$this->assertEquals("SELECT Foo, Bar FROM FooBarTable", $query->sql($parameters));
 		$query = new SQLQuery(array("Foo", "Bar"), "FooBarTable", array("Foo = 'Boo'"));
-		$this->assertEquals("SELECT Foo, Bar FROM FooBarTable WHERE (Foo = 'Boo')", $query->sql());
+		$this->assertEquals("SELECT Foo, Bar FROM FooBarTable WHERE (Foo = 'Boo')", $query->sql($parameters));
 	}
 	
 	public function testSelectWithChainedMethods() {
 		$query = new SQLQuery();
 		$query->setSelect("Name","Meta")->setFrom("MyTable")->setWhere("Name = 'Name'")->addWhere("Meta = 'Test'");
-		$this->assertEquals("SELECT Name, Meta FROM MyTable WHERE (Name = 'Name') AND (Meta = 'Test')", $query->sql());
+		$this->assertEquals("SELECT Name, Meta FROM MyTable WHERE (Name = 'Name') AND (Meta = 'Test')", $query->sql($parameters));
 	}
 	
 	public function testCanSortBy() {
@@ -63,7 +63,7 @@ class SQLQueryTest extends SapphireTest {
 		$query->setWhere("Name = 'Name'")->addWhere("Meta = 'Test'")->addWhere("Beta != 'Gamma'");
 		$this->assertEquals(
 			"SELECT Name, Meta FROM MyTable WHERE (Name = 'Name') AND (Meta = 'Test') AND (Beta != 'Gamma')",
-			$query->sql());
+			$query->sql($parameters));
 	}
 	
 	public function testSelectWithLimitClause() {
@@ -75,59 +75,59 @@ class SQLQueryTest extends SapphireTest {
 		$query = new SQLQuery();
 		$query->setFrom("MyTable");
 		$query->setLimit(99);
-		$this->assertEquals("SELECT * FROM MyTable LIMIT 99", $query->sql());
+		$this->assertEquals("SELECT * FROM MyTable LIMIT 99", $query->sql($parameters));
 	
 		// array limit with start (MySQL specific)
 		$query = new SQLQuery();
 		$query->setFrom("MyTable");
 		$query->setLimit(99, 97);
-		$this->assertEquals("SELECT * FROM MyTable LIMIT 99 OFFSET 97", $query->sql());
+		$this->assertEquals("SELECT * FROM MyTable LIMIT 99 OFFSET 97", $query->sql($parameters));
 	}
 	
 	public function testSelectWithOrderbyClause() {
 		$query = new SQLQuery();
 		$query->setFrom("MyTable");
 		$query->setOrderBy('MyName');
-		$this->assertEquals('SELECT * FROM MyTable ORDER BY MyName ASC', $query->sql());
+		$this->assertEquals('SELECT * FROM MyTable ORDER BY MyName ASC', $query->sql($parameters));
 		
 		$query = new SQLQuery();
 		$query->setFrom("MyTable");
 		$query->setOrderBy('MyName desc');
-		$this->assertEquals('SELECT * FROM MyTable ORDER BY MyName DESC', $query->sql());
+		$this->assertEquals('SELECT * FROM MyTable ORDER BY MyName DESC', $query->sql($parameters));
 		
 		$query = new SQLQuery();
 		$query->setFrom("MyTable");
 		$query->setOrderBy('MyName ASC, Color DESC');
-		$this->assertEquals('SELECT * FROM MyTable ORDER BY MyName ASC, Color DESC', $query->sql());
+		$this->assertEquals('SELECT * FROM MyTable ORDER BY MyName ASC, Color DESC', $query->sql($parameters));
 		
 		$query = new SQLQuery();
 		$query->setFrom("MyTable");
 		$query->setOrderBy('MyName ASC, Color');
-		$this->assertEquals('SELECT * FROM MyTable ORDER BY MyName ASC, Color ASC', $query->sql());
+		$this->assertEquals('SELECT * FROM MyTable ORDER BY MyName ASC, Color ASC', $query->sql($parameters));
 
 		$query = new SQLQuery();
 		$query->setFrom("MyTable");
 		$query->setOrderBy(array('MyName' => 'desc'));
-		$this->assertEquals('SELECT * FROM MyTable ORDER BY MyName DESC', $query->sql());
+		$this->assertEquals('SELECT * FROM MyTable ORDER BY MyName DESC', $query->sql($parameters));
 		
 		$query = new SQLQuery();
 		$query->setFrom("MyTable");
 		$query->setOrderBy(array('MyName' => 'desc', 'Color'));
-		$this->assertEquals('SELECT * FROM MyTable ORDER BY MyName DESC, Color ASC', $query->sql());
+		$this->assertEquals('SELECT * FROM MyTable ORDER BY MyName DESC, Color ASC', $query->sql($parameters));
 		
 		$query = new SQLQuery();
 		$query->setFrom("MyTable");
 		$query->setOrderBy('implode("MyName","Color")');
 		$this->assertEquals(
 			'SELECT *, implode("MyName","Color") AS "_SortColumn0" FROM MyTable ORDER BY "_SortColumn0" ASC', 
-			$query->sql());
+			$query->sql($parameters));
 		
 		$query = new SQLQuery();
 		$query->setFrom("MyTable");
 		$query->setOrderBy('implode("MyName","Color") DESC');
 		$this->assertEquals(
 			'SELECT *, implode("MyName","Color") AS "_SortColumn0" FROM MyTable ORDER BY "_SortColumn0" DESC',
-			$query->sql());
+			$query->sql($parameters));
 		
 		$query = new SQLQuery();
 		$query->setFrom("MyTable");
@@ -135,7 +135,7 @@ class SQLQueryTest extends SapphireTest {
 		
 		$this->assertEquals(
 			'SELECT *, RAND() AS "_SortColumn0" FROM MyTable ORDER BY "_SortColumn0" ASC',
-			$query->sql());
+			$query->sql($parameters));
 	}
 
 	/**
@@ -170,29 +170,29 @@ class SQLQueryTest extends SapphireTest {
 		$query->setOrderBy("Name");
 		$query->reverseOrderBy();
 
-		$this->assertEquals('SELECT * FROM MyTable ORDER BY Name DESC',$query->sql());	
+		$this->assertEquals('SELECT * FROM MyTable ORDER BY Name DESC',$query->sql($parameters));	
 		
 		$query->setOrderBy("Name DESC");
 		$query->reverseOrderBy();
 
-		$this->assertEquals('SELECT * FROM MyTable ORDER BY Name ASC',$query->sql());
+		$this->assertEquals('SELECT * FROM MyTable ORDER BY Name ASC',$query->sql($parameters));
 		
 		$query->setOrderBy(array("Name" => "ASC"));
 		$query->reverseOrderBy();
 		
-		$this->assertEquals('SELECT * FROM MyTable ORDER BY Name DESC',$query->sql());
+		$this->assertEquals('SELECT * FROM MyTable ORDER BY Name DESC',$query->sql($parameters));
 		
 		$query->setOrderBy(array("Name" => 'DESC', 'Color' => 'asc'));
 		$query->reverseOrderBy();
 		
-		$this->assertEquals('SELECT * FROM MyTable ORDER BY Name ASC, Color DESC',$query->sql());
+		$this->assertEquals('SELECT * FROM MyTable ORDER BY Name ASC, Color DESC',$query->sql($parameters));
 		
 		$query->setOrderBy('implode("MyName","Color") DESC');
 		$query->reverseOrderBy();
 		
 		$this->assertEquals(
 			'SELECT *, implode("MyName","Color") AS "_SortColumn0" FROM MyTable ORDER BY "_SortColumn0" ASC',
-			$query->sql());
+			$query->sql($parameters));
 	}
 
 	public function testFiltersOnID() {
@@ -278,7 +278,7 @@ class SQLQueryTest extends SapphireTest {
 		$this->assertEquals('SELECT * FROM MyTable '.
 			'INNER JOIN "MyOtherTable" ON MyOtherTable.ID = 2 '.
 			'LEFT JOIN "MyLastTable" ON MyOtherTable.ID = MyLastTable.ID',
-			$query->sql()
+			$query->sql($parameters)
 		);
 
 		$query = new SQLQuery();
@@ -289,7 +289,7 @@ class SQLQueryTest extends SapphireTest {
 		$this->assertEquals('SELECT * FROM MyTable '.
 			'INNER JOIN "MyOtherTable" AS "table1" ON MyOtherTable.ID = 2 '.
 			'LEFT JOIN "MyLastTable" AS "table2" ON MyOtherTable.ID = MyLastTable.ID',
-			$query->sql()
+			$query->sql($parameters)
 		);
 	}
 	
@@ -299,7 +299,7 @@ class SQLQueryTest extends SapphireTest {
 		$query->setFrom('MyTable');
 
 		$query->setWhereAny(array("Monkey = 'Chimp'", "Color = 'Brown'"));
-		$this->assertEquals("SELECT * FROM MyTable WHERE (Monkey = 'Chimp' OR Color = 'Brown')",$query->sql());
+		$this->assertEquals("SELECT * FROM MyTable WHERE (Monkey = 'Chimp' OR Color = 'Brown')",$query->sql($parameters));
 	}
 	
 	public function testSelectFirst() {

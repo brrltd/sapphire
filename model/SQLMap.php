@@ -3,6 +3,7 @@
  * This is a class used to represent key->value pairs generated from database queries.
  * The query isn't actually executed until you need it.
  * 
+ * @deprecated since version 3.0
  * @package framework
  * @subpackage model
  */
@@ -16,6 +17,9 @@ class SQLMap extends Object implements IteratorAggregate {
 	
 	/**
 	 * Construct a SQLMap.
+	 * 
+	 * @deprecated since version 3.0
+	 * 
 	 * @param SQLQuery $query The query to generate this map. THis isn't executed until it's needed.
 	 */
 	public function __construct(SQLQuery $query, $keyField = "ID", $titleField = "Title") {
@@ -40,10 +44,12 @@ class SQLMap extends Object implements IteratorAggregate {
 	public function getItem($id) {
 		if($id) {
 			$baseTable = reset($this->query->from);
-			$where = "$baseTable.\"ID\" = $id";
-			$this->query->where[sha1($where)] = $where;
+			$oldWhere = $this->query->getWhere();
+			$this->query->where(array(
+				"\"$baseTable\".\"ID\" = ?" => $id
+			));
 			$record = $this->query->execute()->first();
-			unset($this->query->where[sha1($where)]);
+			$this->query->setWhere($oldWhere);
 			if($record) {
 				$className = $record['ClassName'];
 				$obj = new $className($record);

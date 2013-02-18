@@ -63,6 +63,8 @@ class ViewableData extends Object implements IteratorAggregate {
 	/**
 	 * Converts a field spec into an object creator. For example: "Int" becomes "new Int($fieldName);" and "Varchar(50)"
 	 * becomes "new Varchar($fieldName, 50);".
+	 * 
+	 * @deprecated since version 2.5
 	 *
 	 * @param string $fieldSchema The field spec
 	 * @return string
@@ -74,6 +76,8 @@ class ViewableData extends Object implements IteratorAggregate {
 	/**
 	 * Convert a field schema (e.g. "Varchar(50)") into a casting object creator array that contains both a className
 	 * and castingHelper constructor code. See {@link castingObjectCreator} for more information about the constructor.
+	 * 
+	 * @deprecated since version 2.5
 	 *
 	 * @param string $fieldSchema
 	 * @return array
@@ -222,6 +226,8 @@ class ViewableData extends Object implements IteratorAggregate {
 	 * The returned array contains two keys:
 	 *  - className: the class the field would be casted to (e.g. "Varchar")
 	 *  - castingHelper: the casting helper for casting the field (e.g. "return new Varchar($fieldName)")
+	 * 
+	 * @deprecated since version 2.5
 	 *
 	 * @param string $field
 	 * @return array

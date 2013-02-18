@@ -479,19 +479,13 @@ class Debug {
 			// This basically calls Permission::checkMember($_SESSION['loggedInAs'], 'ADMIN');
 			
 			$memberID = $_SESSION['loggedInAs'];
-			
-			$groups = DB::query("SELECT \"GroupID\" from \"Group_Members\" WHERE \"MemberID\" = " . $memberID);
-			$groupCSV = implode($groups->column(), ',');
-			
 			$permission = DB::query("
-				SELECT \"ID\"
-				FROM \"Permission\"
-				WHERE (
-					\"Code\" = 'ADMIN'
-					AND \"Type\" = " . Permission::GRANT_PERMISSION . "
-					AND \"GroupID\" IN ($groupCSV)
-				)
-			")->value();
+				SELECT \"ID\" FROM \"Permission\"
+				WHERE \"Code\" = ? 
+				AND \"Type\" = ? 
+				AND \"GroupID\" IN (SELECT \"GroupID\" from \"Group_Members\" WHERE \"MemberID\" = ?)",
+				array('ADMIN', Permission::GRANT_PERMISSION, $memberID)
+			)->value();
 			
 			if($permission) {
 				return;

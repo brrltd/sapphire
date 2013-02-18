@@ -56,6 +56,9 @@ class GDBackend extends Object implements Image_Backend {
 		$this->height = imagesy($resource);
 	}
 
+	/**
+	 * @deprecated since version 3.1
+	 */
 	public function setGD($gd) {
 		Deprecation::notice('3.1', 'Use GD::setImageResource instead',
 			Deprecation::SCOPE_CLASS);
@@ -66,6 +69,9 @@ class GDBackend extends Object implements Image_Backend {
 		return $this->gd;
 	}
 
+	/**
+	 * @deprecated since version 3.1
+	 */
 	public function getGD() {
 		Deprecation::notice('3.1', 'GD::getImageResource instead',
 			Deprecation::SCOPE_CLASS);
@@ -149,6 +155,9 @@ class GDBackend extends Object implements Image_Backend {
 		return $this->gd ? true : false;
 	}
 	
+	/**
+	 * @deprecated since version 3.1
+	 */
 	public function hasGD() {
 		Deprecation::notice('3.1', 'GD::hasImageResource instead',
 			Deprecation::SCOPE_CLASS);
@@ -192,7 +201,7 @@ class GDBackend extends Object implements Image_Backend {
 	 * 
 	 * @param angle 
 	 *
-	 * @return GD 
+	 * @return GDBackend
 	*/ 
 	
 	public function rotate($angle) {
@@ -215,7 +224,7 @@ class GDBackend extends Object implements Image_Backend {
 	 * 
 	 * @param angle 
 	 *
-	 * @return GD 
+	 * @return GDBackend
 	*/ 
 	
 	public function rotatePixelByPixel($angle) {
@@ -259,7 +268,7 @@ class GDBackend extends Object implements Image_Backend {
 	 * @param width rectangle width
 	 * @param height rectangle height
 	 *
-	 * @return GD  
+	 * @return GDBackend 
 	*/ 
 	
 	public function crop($top, $left, $width, $height) {
@@ -355,7 +364,7 @@ class GDBackend extends Object implements Image_Backend {
 		imagealphablending($newGD, false);
 		imagesavealpha($newGD, true);
 		
-		$bg = GD::color_web2gd($newGD, $backgroundColor);
+		$bg = GDBackend::color_web2gd($newGD, $backgroundColor);
 		imagefilledrectangle($newGD, 0, 0, $width, $height, $bg);
 		
 		$destAR = $width / $height;
@@ -466,8 +475,14 @@ class GDBackend extends Object implements Image_Backend {
 
 /**
  * Backwards compatibility
+ * 
+ * @deprecated since version 3.1 Use GDBackend instead
  */
 class GD extends GDBackend {
+	
+	/**
+	 * @deprecated since version 3.1
+	 */
 	public static function set_default_quality($quality) {
 		Deprecation::notice(
 			'3.1', 

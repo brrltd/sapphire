@@ -114,12 +114,28 @@ class Convert {
 		return self::raw2json($val);
 	}
 
-	public static function raw2sql($val) {
+	/**
+	 * Safely encodes a value (or list of values) using the current database's
+	 * safe string encoding method
+	 * 
+	 * @param string|array $val Input value
+	 * @param boolean $quoted Flag indicating whether the value should be safely
+	 * quoted, instead of only being escaped. By default this function will 
+	 * only escape the string (false).
+	 * @return string|array Safely encoded value in the same format as the input
+	 */
+	public static function raw2sql($val, $quoted = false) {
 		if(is_array($val)) {
-			foreach($val as $k => $v) $val[$k] = self::raw2sql($v);
+			foreach($val as $k => $v) {
+				$val[$k] = self::raw2sql($v, $quoted);
+			}
 			return $val;
 		} else {
-			return DB::getConn()->addslashes($val);
+			if($quoted) {
+				return DB::getConn()->quoteString($val);
+			} else {
+				return DB::getConn()->escapeString($val);
+			}
 		}
 	}
 

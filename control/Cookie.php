@@ -54,6 +54,7 @@ class Cookie {
 	}
 
 	/**
+	 * @deprecated since version 3.1
 	 * @param string
 	 * @param string
 	 * @param string

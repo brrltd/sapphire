@@ -220,7 +220,7 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 
 		// Set up fixture
 		if($fixtureFile || $this->usesDatabase || !self::using_temp_db()) {
-			if(substr(DB::getConn()->currentDatabase(), 0, strlen($prefix) + 5) 
+			if(substr(DB::getConn()->getSelectedDatabase(), 0, strlen($prefix) + 5) 
 					!= strtolower(sprintf('%stmpdb', $prefix))) {
 
 				//echo "Re-creating temp database... ";
@@ -706,7 +706,7 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 	public static function using_temp_db() {
 		$dbConn = DB::getConn();
 		$prefix = defined('SS_DATABASE_PREFIX') ? SS_DATABASE_PREFIX : 'ss_';
-		return $dbConn && (substr($dbConn->currentDatabase(), 0, strlen($prefix) + 5) 
+		return $dbConn && (substr($dbConn->getSelectedDatabase(), 0, strlen($prefix) + 5) 
 			== strtolower(sprintf('%stmpdb', $prefix)));
 	}
 	
@@ -714,7 +714,7 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 		// Delete our temporary database
 		if(self::using_temp_db()) {
 			$dbConn = DB::getConn();
-			$dbName = $dbConn->currentDatabase();
+			$dbName = $dbConn->getSelectedDatabase();
 			if($dbName && DB::getConn()->databaseExists($dbName)) {
 				// Some DataExtensions keep a static cache of information that needs to 
 				// be reset whenever the database is killed
@@ -724,7 +724,7 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 				}
 
 				// echo "Deleted temp database " . $dbConn->currentDatabase() . "\n";
-				$dbConn->dropDatabase();
+				$dbConn->dropCurrentDatabase();
 			}
 		}
 	}
@@ -734,8 +734,7 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 	 */
 	public static function empty_temp_db() {
 		if(self::using_temp_db()) {
-			$dbadmin = new DatabaseAdmin();
-			$dbadmin->clearAllData();
+			DB::getConn()->clearAllData();
 			
 			// Some DataExtensions keep a static cache of information that needs to 
 			// be reset whenever the database is cleaned out
@@ -762,8 +761,7 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 			$dbname = strtolower(sprintf('%stmpdb', $prefix)) . rand(1000000,9999999);
 		}
 
-		$dbConn->selectDatabase($dbname);
-		$dbConn->createDatabase();
+		$dbConn->selectDatabase($dbname, true);
 
 		$st = Injector::inst()->create('SapphireTest');
 		$st->resetDBSchema();
@@ -803,27 +801,26 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 			$dataClasses = ClassInfo::subclassesFor('DataObject');
 			array_shift($dataClasses);
 
-			$conn = DB::getConn();
-			$conn->beginSchemaUpdate();
 			DB::quiet();
-
-			foreach($dataClasses as $dataClass) {
-				// Check if class exists before trying to instantiate - this sidesteps any manifest weirdness
-				if(class_exists($dataClass)) {
-					$SNG = singleton($dataClass);
-					if(!($SNG instanceof TestOnly)) $SNG->requireTable();
+			$schema = DB::getSchema();
+			$extraDataObjects = $includeExtraDataObjects ? $this->extraDataObjects : null;
+			$schema->schemaUpdate(function() use($dataClasses, $extraDataObjects){
+				foreach($dataClasses as $dataClass) {
+					// Check if class exists before trying to instantiate - this sidesteps any manifest weirdness
+					if(class_exists($dataClass)) {
+						$SNG = singleton($dataClass);
+						if(!($SNG instanceof TestOnly)) $SNG->requireTable();
+					}
 				}
-			}
-
-			// If we have additional dataobjects which need schema, do so here:
-			if($includeExtraDataObjects && $this->extraDataObjects) {
-				foreach($this->extraDataObjects as $dataClass) {
-					$SNG = singleton($dataClass);
-					if(singleton($dataClass) instanceof DataObject) $SNG->requireTable();
+				
+				// If we have additional dataobjects which need schema, do so here:
+				if($extraDataObjects) {
+					foreach($extraDataObjects as $dataClass) {
+						$SNG = singleton($dataClass);
+						if(singleton($dataClass) instanceof DataObject) $SNG->requireTable();
+					}
 				}
-			}
-
-			$conn->endSchemaUpdate();
+			});
 
 			ClassInfo::reset_db_cache();
 			singleton('DataObject')->flushCache();
@@ -845,7 +842,9 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 			$permission->write();
 			$group->Permissions()->add($permission);
 			
-			$member = DataObject::get_one('Member', sprintf('"Email" = \'%s\'', "$permCode@example.org"));
+			$member = DataObject::get_one('Member', array(
+				'"Member"."Email"' => "$permCode@example.org"
+			));
 			if(!$member) $member = Injector::inst()->create('Member');
 			
 			$member->FirstName = $permCode;

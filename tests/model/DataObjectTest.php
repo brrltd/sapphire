@@ -128,17 +128,25 @@ class DataObjectTest extends SapphireTest {
 		$this->assertEquals('Captain', $captain1->FirstName);
 
 		// Test get_one() without caching
-		$comment1 = DataObject::get_one('DataObjectTest_TeamComment', "\"Name\" = 'Joe'", false);
+		$comment1 = DataObject::get_one('DataObjectTest_TeamComment', array(
+			'"DataObjectTest_TeamComment"."Name"' => 'Joe'
+		), false);
 		$comment1->Comment = "Something Else";
 
-		$comment2 = DataObject::get_one('DataObjectTest_TeamComment', "\"Name\" = 'Joe'", false);
+		$comment2 = DataObject::get_one('DataObjectTest_TeamComment', array(
+			'"DataObjectTest_TeamComment"."Name"' => 'Joe'
+		), false);
 		$this->assertNotEquals($comment1->Comment, $comment2->Comment);
 
 		// Test get_one() with caching
-		$comment1 = DataObject::get_one('DataObjectTest_TeamComment', "\"Name\" = 'Bob'", true);
+		$comment1 = DataObject::get_one('DataObjectTest_TeamComment', array(
+			'"DataObjectTest_TeamComment"."Name"' => 'Bob'
+		), true);
 		$comment1->Comment = "Something Else";
 
-		$comment2 = DataObject::get_one('DataObjectTest_TeamComment', "\"Name\" = 'Bob'", true);
+		$comment2 = DataObject::get_one('DataObjectTest_TeamComment', array(
+			'"DataObjectTest_TeamComment"."Name"' => 'Bob'
+		), true);
 		$this->assertEquals((string)$comment1->Comment, (string)$comment2->Comment);
 
 		// Test get_one() with order by without caching
@@ -155,7 +163,9 @@ class DataObjectTest extends SapphireTest {
 		$this->assertEquals('Phil', $comment->Name);
 
 		// Test get_one() with bad case on the classname
-		$subteam1 = DataObject::get_one('dataobjecttest_subteam', "\"Title\" = 'Subteam 1'", true);
+		$subteam1 = DataObject::get_one('dataobjecttest_subteam', array(
+			'"DataObjectTest_Team"."Title"' => 'Subteam 1'
+		), true);
 		$this->assertEquals($subteam1->Title, "Subteam 1");
 	}
 

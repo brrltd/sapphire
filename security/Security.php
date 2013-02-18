@@ -685,9 +685,9 @@ class Security extends Controller {
 
 		// find a group with ADMIN permission
 		$adminGroup = DataObject::get('Group')
-			->where("\"Permission\".\"Code\" = 'ADMIN'")
-			->sort("\"Group\".\"ID\"")
-			->innerJoin("Permission", "\"Group\".\"ID\"=\"Permission\".\"GroupID\"")
+			->where(array('"Permission"."Code"' => 'ADMIN'))
+			->sort('"Group"."ID"')
+			->innerJoin("Permission", '"Group"."ID" = "Permission"."GroupID"')
 			->First();
 		
 		if(is_callable('Subsite::changeSubsite')) {

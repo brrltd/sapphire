@@ -105,7 +105,8 @@ class Aggregate extends ViewableData {
 		$query = $this->query("$func(\"$table\".\"$attribute\")");
 		
 		// Cache results of this specific SQL query until flushCache() is triggered.
-		$cachekey = sha1($query->sql());
+		$sql = $query->sql($parameters);
+		$cachekey = sha1($sql.'-'.var_export($parameters, true));
 		$cache = self::cache();
 		
 		if (!($result = $cache->load($cachekey))) {

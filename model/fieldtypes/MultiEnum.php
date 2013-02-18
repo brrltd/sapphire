@@ -38,7 +38,7 @@ class MultiEnum extends Enum {
 				'enums'=>$this->enum,
 				'character set'=>'utf8',
 				'collate'=> 'utf8_general_ci',
-				'default'=>Convert::raw2sql($this->default),
+				'default'=> $this->default,
 				'table'=>$this->tableName,
 				'arrayValue'=>$this->arrayValue
 			)

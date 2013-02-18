@@ -198,6 +198,9 @@ class Email extends ViewableData {
 		);
 	}
 	
+	/**
+	 * @deprecated since version 3.1
+	 */
 	public function setBounceHandlerURL($bounceHandlerURL) {
 		Deprecation::notice('3.1', 'Use "emailbouncehandler" module');
 	}

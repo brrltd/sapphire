@@ -49,13 +49,16 @@ abstract class StringField extends DBField {
 	
 	/**
 	 * Set whether this field stores empty strings rather than converting them to null
+	 * 
 	 * @param $value boolean True if empty strings are to be converted to null
 	 */
 	public function setNullifyEmpty($value) {
 		$this->nullifyEmpty = ($value ? true : false);
 	}
+	
 	/**
 	 * Get whether this field stores empty strings rather than converting them to null
+	 * 
 	 * @return bool True if empty strings are to be converted to null
 	 */
 	public function getNullifyEmpty() {
@@ -75,10 +78,10 @@ abstract class StringField extends DBField {
 	 * @see core/model/fieldtypes/DBField#prepValueForDB($value)
 	 */
 	public function prepValueForDB($value) {
-		if(!$this->nullifyEmpty && $value === '') {
-			return DB::getConn()->prepStringForDB($value);
+		if($this->nullifyEmpty && $value === '') {
+			return null;
 		} else {
-			return parent::prepValueForDB($value);
+			return $value;
 		}
 	}
 	
