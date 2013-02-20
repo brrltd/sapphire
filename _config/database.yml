@@ -6,11 +6,11 @@ Injector:
     class: 'MySQLDatabase'
     properties:
       connector: %$PDOConnector
-      schemaManager: %$MySQLSchema
+      schemaManager: %$MySQLSchemaManager
       queryBuilder: %$DBQueryBuilder
   MySQLiDatabase:
     class: 'MySQLDatabase'
     properties:
       connector: %$MySQLiConnector
-      schemaManager: %$MySQLSchema
+      schemaManager: %$MySQLSchemaManager
       queryBuilder: %$DBQueryBuilder

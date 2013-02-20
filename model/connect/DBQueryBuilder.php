@@ -9,6 +9,34 @@
 class DBQueryBuilder {
 	
 	/**
+	 * Determine if this builder should format the resulting SQL query for readability
+	 * 
+	 * @return boolean
+	 */
+	public function doFormat() {
+		// format could be one of 'true', 'false', 'dev' (for dev only), 'dev,test' for non-live, etc
+		$arg = Config::inst()->get('DBQueryBuilder', 'format');
+		
+		if($arg === null) return false;
+		if(is_bool($arg)) return $arg;
+		if($arg === 'true') return true;
+		if($arg === 'false') return false;
+		
+		// Assume this is environment dependent
+		$env = Director::get_environment_type();
+		return stripos($arg, $env) !== false;
+	}
+	
+	/**
+	 * Determines the line separator to use.
+	 * 
+	 * @return string Non-empty whitespace character
+	 */
+	public function getSeparator() {
+		return $this->doFormat() ? "\n " : ' ';
+	}
+	
+	/**
 	 * Builds a sql query with the specified connection
 	 * 
 	 * @param SQLExpression $query The expression object to build from
@@ -22,7 +50,7 @@ class DBQueryBuilder {
 		// Ignore null queries
 		if($query->isEmpty()) return null;
 		
-		if($query instanceof SQLQuery) {
+		if($query instanceof SQLSelect) {
 			$sql = $this->buildSelectQuery($query, $parameters);
 		} elseif($query instanceof SQLDelete) {
 			$sql = $this->buildDeleteQuery($query, $parameters);
@@ -37,13 +65,13 @@ class DBQueryBuilder {
 	}
 	
 	/**
-	 * Builds a query from a SQLQuery expression
+	 * Builds a query from a SQLSelect expression
 	 * 
-	 * @param SQLQuery $query The expression object to build from
+	 * @param SQLSelect $query The expression object to build from
 	 * @param array $parameters Out parameter for the resulting query parameters
 	 * @return string Completed SQL string
 	 */
-	protected function buildSelectQuery(SQLQuery $query, array &$parameters) {
+	protected function buildSelectQuery(SQLSelect $query, array &$parameters) {
 		$sql  = $this->buildSelectFragment($query, $parameters);
 		$sql .= $this->buildFromFragment($query, $parameters);
 		$sql .= $this->buildWhereFragment($query, $parameters);
@@ -76,16 +104,15 @@ class DBQueryBuilder {
 	 * @return string Completed SQL string
 	 */
 	protected function buildInsertQuery(SQLInsert $query, array &$parameters) {
-		
+		$nl = $this->getSeparator();
 		$into = $query->getInto();
-		$sql = "INSERT INTO $into\n";
 		
 		// Column identifiers
 		$columns = $query->getColumns();
-		$sql .= " (" . implode(', ', $columns) . ")\n";
+		$sql = "INSERT INTO {$into}{$nl}(" . implode(', ', $columns) . ")";
 		
 		// Values
-		$sql .= " VALUES\n";
+		$sql .= "{$nl}VALUES";
 		
 		// Build all rows
 		$rowParts = array();
@@ -109,9 +136,9 @@ class DBQueryBuilder {
 					$parameters[] = null;
 				}
 			}
-			$rowParts[] = " (" . implode(', ', $parts) . ')';
+			$rowParts[] = '(' . implode(', ', $parts) . ')';
 		}
-		$sql .= implode(",\n", $rowParts);
+		$sql .= $nl . implode(",$nl", $rowParts);
 		
 		return $sql;
 	}
@@ -132,11 +159,11 @@ class DBQueryBuilder {
 	/**
 	 * Returns the SELECT clauses ready for inserting into a query.
 	 * 
-	 * @param SQLQuery $query The expression object to build from
+	 * @param SQLSelect $query The expression object to build from
 	 * @param array $parameters Out parameter for the resulting query parameters
 	 * @return string Completed select part of statement
 	 */
-	protected function buildSelectFragment(SQLQuery $query, array &$parameters) {
+	protected function buildSelectFragment(SQLSelect $query, array &$parameters) {
 		$distinct = $query->getDistinct();
 		$select = $query->getSelect();
 		$clauses = array();
@@ -152,7 +179,7 @@ class DBQueryBuilder {
 
 		$text = 'SELECT ';
 		if ($distinct) $text .= 'DISTINCT ';
-		return $text .= implode(', ', $clauses) . "\n";
+		return $text .= implode(', ', $clauses);
 	}
 
 	/**
@@ -171,7 +198,7 @@ class DBQueryBuilder {
 		if(!empty($delete)) {
 			$text .= ' ' . implode(', ', $delete);
 		}
-		return $text . "\n";
+		return $text;
 	}
 
 	/**
@@ -183,7 +210,7 @@ class DBQueryBuilder {
 	 */
 	public function buildUpdateFragment(SQLUpdate $query, array &$parameters) {
 		$tables = $query->getJoins();
-		$text = 'UPDATE ' . implode(' ', $tables) . "\n";
+		$text = 'UPDATE ' . implode(' ', $tables);
 		
 		// Join SET components together, considering parameters
 		$parts = array();
@@ -195,7 +222,8 @@ class DBQueryBuilder {
 				break;
 			}
 		}
-		$text .= ' SET ' . implode(', ', $parts) . "\n";
+		$nl = $this->getSeparator();
+		$text .= "{$nl}SET " . implode(', ', $parts);
 		return $text;
 	}
 
@@ -208,7 +236,8 @@ class DBQueryBuilder {
 	 */
 	public function buildFromFragment(SQLExpression $query, array &$parameters) {
 		$from = $query->getJoins();
-		return ' FROM ' . implode(' ', $from) . "\n";
+		$nl = $this->getSeparator();
+		return  "{$nl}FROM " . implode(' ', $from);
 	}
 
 	/**
@@ -219,6 +248,7 @@ class DBQueryBuilder {
 	 * @return string Completed where condition
 	 */
 	public function buildWhereFragment(SQLExpression $query, array &$parameters) {
+		
 		// Get parameterised elements
 		$where = $query->getWhereParameterised($whereParameters);
 		if(empty($where)) return '';
@@ -226,17 +256,18 @@ class DBQueryBuilder {
 		// Join conditions
 		$connective = $query->getConnective();
 		$parameters = array_merge($parameters, $whereParameters);
-		return ' WHERE (' . implode(")\n {$connective} (", $where) . ")\n";
+		$nl = $this->getSeparator();
+		return "{$nl}WHERE (" . implode("){$nl}{$connective} (", $where) . ")";
 	}
 
 	/**
 	 * Returns the ORDER BY clauses ready for inserting into a query.
 	 * 
-	 * @param SQLQuery $query The expression object to build from
+	 * @param SQLSelect $query The expression object to build from
 	 * @param array $parameters Out parameter for the resulting query parameters
 	 * @return string Completed order by part of statement
 	 */
-	public function buildOrderByFragment(SQLQuery $query, array &$parameters) {
+	public function buildOrderByFragment(SQLSelect $query, array &$parameters) {
 		$orderBy = $query->getOrderBy();
 		if(empty($orderBy)) return '';
 		
@@ -245,48 +276,53 @@ class DBQueryBuilder {
 		foreach ($orderBy as $clause => $dir) {
 			$statements[] = trim("$clause $dir");
 		}
-		return ' ORDER BY ' . implode(', ', $statements) . "\n";
+		
+		$nl = $this->getSeparator();
+		return "{$nl}ORDER BY " . implode(', ', $statements);
 	}
 
 	/**
 	 * Returns the GROUP BY clauses ready for inserting into a query.
 	 * 
-	 * @param SQLQuery $query The expression object to build from
+	 * @param SQLSelect $query The expression object to build from
 	 * @param array $parameters Out parameter for the resulting query parameters
 	 * @return string Completed group part of statement
 	 */
-	public function buildGroupByFragment(SQLQuery $query, array &$parameters) {
+	public function buildGroupByFragment(SQLSelect $query, array &$parameters) {
 		$groupBy = $query->getGroupBy();
 		if(empty($groupBy)) return '';
 		
-		return ' GROUP BY ' . implode(', ', $groupBy) . "\n";
+		$nl = $this->getSeparator();
+		return "{$nl}GROUP BY " . implode(', ', $groupBy);
 	}
 
 	/**
 	 * Returns the HAVING clauses ready for inserting into a query.
 	 * 
-	 * @param SQLQuery $query The expression object to build from
+	 * @param SQLSelect $query The expression object to build from
 	 * @param array $parameters Out parameter for the resulting query parameters
 	 * @return string
 	 */
-	public function buildHavingFragment(SQLQuery $query, array &$parameters) {
+	public function buildHavingFragment(SQLSelect $query, array &$parameters) {
 		$having = $query->getHavingParameterised($havingParameters);
 		if(empty($having)) return '';
 		
 		// Generate having, considering parameters present
 		$connective = $query->getConnective();
-		$parameters = array_merge($parameters, $havingParameters);		
-		return ' HAVING ( ' . implode(" )\n $connective ( ", $having) . ")\n";
+		$parameters = array_merge($parameters, $havingParameters);	
+		$nl = $this->getSeparator();	
+		return "{$nl}HAVING (" . implode("){$nl}{$connective} (", $having) . ")";
 	}
 
 	/**
 	 * Return the LIMIT clause ready for inserting into a query.
 	 * 
-	 * @param SQLQuery $query The expression object to build from
+	 * @param SQLSelect $query The expression object to build from
 	 * @param array $parameters Out parameter for the resulting query parameters
 	 * @return string The finalised limit SQL fragment
 	 */
-	public function buildLimitFragment(SQLQuery $query, array &$parameters) {
+	public function buildLimitFragment(SQLSelect $query, array &$parameters) {
+		$nl = $this->getSeparator();
 		
 		// Ensure limit is given
 		$limit = $query->getLimit();
@@ -294,7 +330,7 @@ class DBQueryBuilder {
 		
 		// For literal values return this as the limit SQL
 		if (!is_array($limit)) {
-			return " LIMIT $limit\n";
+			return "{$nl}LIMIT $limit";
 		}
 		
 		// Assert that the array version provides the 'limit' key
@@ -303,10 +339,10 @@ class DBQueryBuilder {
 		}
 		
 		// Format the array limit, given an optional start key
-		$clause = " LIMIT {$limit['limit']}";
-		if(isset($limit['start']) && is_numeric($limit['start'])) {
+		$clause = "{$nl}LIMIT {$limit['limit']}";
+		if(isset($limit['start']) && is_numeric($limit['start']) && $limit['start'] !== 0) {
 			$clause .= " OFFSET {$limit['start']}";
 		}
-		return $clause . "\n";
+		return $clause;
 	}
 }

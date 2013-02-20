@@ -5,7 +5,7 @@
  * @package framework
  * @subpackage model
  */
-class MySQLSchema extends DBSchemaManager {
+class MySQLSchemaManager extends DBSchemaManager {
 
 	public function createTable($table, $fields = null, $indexes = null, $options = null, $advancedOptions = null) {
 		$fieldSchemas = $indexSchemas = "";

@@ -14,12 +14,12 @@ class DataQueryTest extends SapphireTest {
 	public function testJoins() {
 		$dq = new DataQuery('Member');
 		$dq->innerJoin("Group_Members", "\"Group_Members\".\"MemberID\" = \"Member\".\"ID\"");
-		$this->assertContains("INNER JOIN \"Group_Members\" ON \"Group_Members\".\"MemberID\" = \"Member\".\"ID\"",
+		$this->assertSQLContains("INNER JOIN \"Group_Members\" ON \"Group_Members\".\"MemberID\" = \"Member\".\"ID\"",
 			$dq->sql($parameters));
 
 		$dq = new DataQuery('Member');
 		$dq->leftJoin("Group_Members", "\"Group_Members\".\"MemberID\" = \"Member\".\"ID\"");
-		$this->assertContains("LEFT JOIN \"Group_Members\" ON \"Group_Members\".\"MemberID\" = \"Member\".\"ID\"",
+		$this->assertSQLContains("LEFT JOIN \"Group_Members\" ON \"Group_Members\".\"MemberID\" = \"Member\".\"ID\"",
 			$dq->sql($parameters));
 	}
 
@@ -54,7 +54,7 @@ class DataQueryTest extends SapphireTest {
 		$subDq->where('DataQueryTest_A.Name = \'John\'');
 		$subDq->where('DataQueryTest_A.Name = \'Bob\'');
 
-		$this->assertContains(
+		$this->assertSQLContains(
 			"WHERE (DataQueryTest_A.ID = 2) AND ((DataQueryTest_A.Name = 'John') OR (DataQueryTest_A.Name = 'Bob'))", 
 			$dq->sql($parameters)
 		);
@@ -68,7 +68,7 @@ class DataQueryTest extends SapphireTest {
 		$subDq->where('DataQueryTest_A.Name = \'John\'');
 		$subDq->where('DataQueryTest_A.Name = \'Bob\'');
 
-		$this->assertContains(
+		$this->assertSQLContains(
 			"WHERE (DataQueryTest_A.ID = 2) AND ((DataQueryTest_A.Name = 'John') AND (DataQueryTest_A.Name = 'Bob'))", 
 			$dq->sql($parameters)
 		);
@@ -88,7 +88,7 @@ class DataQueryTest extends SapphireTest {
 		$subSubDq->where('DataQueryTest_A.Age = 50');
 		$subDq->where('DataQueryTest_A.Name = \'Bob\'');
 
-		$this->assertContains(
+		$this->assertSQLContains(
 			"WHERE (DataQueryTest_A.ID = 2) AND ((DataQueryTest_A.Name = 'John') OR ((DataQueryTest_A.Age = 18) "
 				. "AND (DataQueryTest_A.Age = 50)) OR (DataQueryTest_A.Name = 'Bob'))", 
 			$dq->sql($parameters)
@@ -100,7 +100,7 @@ class DataQueryTest extends SapphireTest {
 		$dq->conjunctiveGroup();
 
 		// Empty groups should have no where condition at all
-		$this->assertNotContains('WHERE', $dq->sql($parameters));
+		$this->assertSQLNotContains('WHERE', $dq->sql($parameters));
 	}
 
 	public function testSubgroupHandoff() {
@@ -112,12 +112,12 @@ class DataQueryTest extends SapphireTest {
 		$subDq->sort('"DataQueryTest_A"."Name"');
 		$orgDq->sort('"DataQueryTest_A"."Name"');
 
-		$this->assertEquals($dq->sql($parameters), $orgDq->sql($parameters));
+		$this->assertSQLEquals($dq->sql($parameters), $orgDq->sql($parameters));
 
 		$subDq->limit(5, 7);
 		$orgDq->limit(5, 7);
 
-		$this->assertEquals($dq->sql($parameters), $orgDq->sql($parameters));
+		$this->assertSQLEquals($dq->sql($parameters), $orgDq->sql($parameters));
 	}
 }
 

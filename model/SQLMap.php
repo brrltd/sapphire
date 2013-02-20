@@ -10,7 +10,7 @@
 class SQLMap extends Object implements IteratorAggregate {
 	/**
 	 * The query used to generate the map.
-	 * @var SQLQuery
+	 * @var SQLSelect
 	 */
 	protected $query;
 	protected $keyField, $titleField;
@@ -20,9 +20,9 @@ class SQLMap extends Object implements IteratorAggregate {
 	 * 
 	 * @deprecated since version 3.0
 	 * 
-	 * @param SQLQuery $query The query to generate this map. THis isn't executed until it's needed.
+	 * @param SQLSelect $query The query to generate this map. THis isn't executed until it's needed.
 	 */
-	public function __construct(SQLQuery $query, $keyField = "ID", $titleField = "Title") {
+	public function __construct(SQLSelect $query, $keyField = "ID", $titleField = "Title") {
 		Deprecation::notice('3.0', 'Use SS_Map or DataList::map() instead.', Deprecation::SCOPE_CLASS);
 		
 		if(!$query) {

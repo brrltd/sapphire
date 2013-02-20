@@ -1605,7 +1605,7 @@ class LeftAndMainMarkingFilter {
 			}
 		}
 		
-		return new SQLQuery(
+		return new SQLSelect(
 			array("ParentID", "ID"),
 			'SiteTree',
 			$where

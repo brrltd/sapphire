@@ -1,8 +1,8 @@
-# SQL Query
+# SQL Select
 
 ## Introduction
 
-An object representing a SQL query, which can be serialized into a SQL statement. 
+An object representing a SQL select query, which can be serialized into a SQL statement. 
 It is easier to deal with object-wrappers than string-parsing a raw SQL-query. 
 This object is used by the SilverStripe ORM internally.
 
@@ -18,8 +18,8 @@ the following three statements are functionally equivalent:
 	:::php
 	// Through raw SQL
 	$count = DB::query('SELECT COUNT(*) FROM "Member"')->value();
-	// Through SQLQuery abstraction layer
-	$query = new SQLQuery();
+	// Through SQLSelect abstraction layer
+	$query = new SQLSelect();
 	$count = $query->setFrom('Member')->setSelect('COUNT(*)')->value();
 	// Through the ORM
 	$count = Member::get()->count();
@@ -46,23 +46,23 @@ how to sanitize user input before using it in SQL queries.
 ### SELECT
 
 	:::php
-	$sqlQuery = new SQLQuery();
-	$sqlQuery->setFrom('Player');
-	$sqlQuery->selectField('FieldName', 'Name');
-	$sqlQuery->selectField('YEAR("Birthday")', 'Birthyear');
-	$sqlQuery->addLeftJoin('Team','"Player"."TeamID" = "Team"."ID"');
-	$sqlQuery->addWhere('YEAR("Birthday") = 1982');
-	// $sqlQuery->setOrderBy(...);
-	// $sqlQuery->setGroupBy(...);
-	// $sqlQuery->setHaving(...);
-	// $sqlQuery->setLimit(...);
-	// $sqlQuery->setDistinct(true);
+	$sqlSelect = new SQLSelect();
+	$sqlSelect->setFrom('Player');
+	$sqlSelect->selectField('FieldName', 'Name');
+	$sqlSelect->selectField('YEAR("Birthday")', 'Birthyear');
+	$sqlSelect->addLeftJoin('Team','"Player"."TeamID" = "Team"."ID"');
+	$sqlSelect->addWhere(array('YEAR("Birthday") = ?' => 1982));
+	// $sqlSelect->setOrderBy(...);
+	// $sqlSelect->setGroupBy(...);
+	// $sqlSelect->setHaving(...);
+	// $sqlSelect->setLimit(...);
+	// $sqlSelect->setDistinct(true);
 	
 	// Get the raw SQL (optional)
-	$rawSQL = $sqlQuery->sql();
+	$rawSQL = $sqlSelect->sql();
 	
 	// Execute and return a Query object
-	$result = $sqlQuery->execute();
+	$result = $sqlSelect->execute();
 
 	// Iterate over results
 	foreach($result as $row) {
@@ -75,14 +75,20 @@ This class implements the *Iterator*-interface, and provides convenience-methods
 ### DELETE
 
 	:::php
-	$sqlQuery->setDelete(true);
+	$sqlDelete = $sqlSelect->toDelete();
 
 ### INSERT/UPDATE
 
-Currently not supported through the `SQLQuery` class, please use raw `DB::query()` calls instead.
+Use SQLInsert or SQLUpdate to perform write operations
 
 	:::php
-	DB::query('UPDATE "Player" SET "Status"=\'Active\'');
+	SQLUpdate::create('"Player")
+		->setAssignments(array('"Status"' => 'Active'))
+		->setWhere(array('"Status"' => 'Inactive'))
+		->execute();
+	SQLInsert::create('"Player")
+		->assign('"Name"', 'Andrew')
+		->execute();
 
 ### Value Checks
 
@@ -92,12 +98,12 @@ e.g. when you want a single column rather than a full-blown object representatio
 Example: Get the count from a relationship.
 
 	:::php
-	$sqlQuery = new SQLQuery();
-  $sqlQuery->setFrom('Player');
-  $sqlQuery->addSelect('COUNT("Player"."ID")');
-  $sqlQuery->addWhere('"Team"."ID" = 99');
-  $sqlQuery->addLeftJoin('Team', '"Team"."ID" = "Player"."TeamID"');
-  $count = $sqlQuery->execute()->value();
+	$sqlSelect = new SQLSelect();
+  $sqlSelect->setFrom('Player');
+  $sqlSelect->addSelect('COUNT("Player"."ID")');
+  $sqlSelect->addWhere(array('"Team"."ID"' => 99));
+  $sqlSelect->addLeftJoin('Team', '"Team"."ID" = "Player"."TeamID"');
+  $count = $sqlSelect->execute()->value();
 
 Note that in the ORM, this call would be executed in an efficient manner as well:
 
@@ -112,14 +118,14 @@ This can be useful for creating dropdowns.
 Example: Show player names with their birth year, but set their birth dates as values.
 
 	:::php
-	$sqlQuery = new SQLQuery();
-	$sqlQuery->setFrom('Player');
-	$sqlQuery->setSelect('Birthdate');
-	$sqlQuery->selectField('CONCAT("Name", ' - ', YEAR("Birthdate")', 'NameWithBirthyear');
-	$map = $sqlQuery->execute()->map();
+	$sqlSelect = new SQLSelect();
+	$sqlSelect->setFrom('Player');
+	$sqlSelect->setSelect('Birthdate');
+	$sqlSelect->selectField('CONCAT("Name", ' - ', YEAR("Birthdate")', 'NameWithBirthyear');
+	$map = $sqlSelect->execute()->map();
 	$field = new DropdownField('Birthdates', 'Birthdates', $map);
 
-Note that going through SQLQuery is just necessary here 
+Note that going through SQLSelect is just necessary here 
 because of the custom SQL value transformation (`YEAR()`). 
 An alternative approach would be a custom getter in the object definition.
 

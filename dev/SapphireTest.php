@@ -681,6 +681,68 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 		}
 	} 
 	
+    /**
+     * Removes sequences of repeated whitespace characters from SQL queries
+     * making them suitable for string comparison
+     * 
+     * @param string $sql
+     * @return string The cleaned and normalised SQL string
+     */
+    protected function normaliseSQL($sql) {
+		return trim(preg_replace('/\s+/m', ' ', $sql));
+    }
+	
+	/**
+	 * Asserts that two SQL queries are equivalent
+	 * 
+	 * @param string $expectedSQL
+	 * @param string $actualSQL
+     * @param string $message
+     * @param float $delta
+     * @param integer $maxDepth
+     * @param boolean $canonicalize
+     * @param boolean $ignoreCase
+	 */
+	public function assertSQLEquals($expectedSQL, $actualSQL, $message = '', $delta = 0, $maxDepth = 10, $canonicalize = false, $ignoreCase = false) {
+		// Normalise SQL queries to remove patterns of repeating whitespace
+		$expectedSQL = $this->normaliseSQL($expectedSQL);
+		$actualSQL = $this->normaliseSQL($actualSQL);
+        
+		$this->assertEquals($expectedSQL, $actualSQL, $message, $delta, $maxDepth, $canonicalize, $ignoreCase);
+	}
+    
+    /**
+     * Asserts that a SQL query contains a SQL fragment
+     *
+     * @param string $needleSQL
+     * @param string $haystackSQL
+     * @param string $message
+     * @param boolean $ignoreCase
+     * @param boolean $checkForObjectIdentity
+     */
+    public function assertSQLContains($needleSQL, $haystackSQL, $message = '', $ignoreCase = false, $checkForObjectIdentity = true) {
+        $needleSQL = $this->normaliseSQL($needleSQL);
+        $haystackSQL = $this->normaliseSQL($haystackSQL);
+        
+        $this->assertContains($needleSQL, $haystackSQL, $message, $ignoreCase, $checkForObjectIdentity);
+    }
+    
+    /**
+     * Asserts that a SQL query contains a SQL fragment
+     *
+     * @param string $needleSQL
+     * @param string $haystackSQL
+     * @param string $message
+     * @param boolean $ignoreCase
+     * @param boolean $checkForObjectIdentity
+     */
+    public function assertSQLNotContains($needleSQL, $haystackSQL, $message = '', $ignoreCase = false, $checkForObjectIdentity = true) {
+        $needleSQL = $this->normaliseSQL($needleSQL);
+        $haystackSQL = $this->normaliseSQL($haystackSQL);
+        
+        $this->assertNotContains($needleSQL, $haystackSQL, $message, $ignoreCase, $checkForObjectIdentity);
+    }
+	
 	/**
 	 * Helper function for the DOS matchers
 	 */

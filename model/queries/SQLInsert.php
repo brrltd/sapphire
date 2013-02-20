@@ -23,6 +23,18 @@ class SQLInsert extends SQLExpression implements SQLWriteExpression {
 	 */
 	protected $into = null;
 	
+	/**
+	 * Construct a new SQLInsert object
+	 * 
+	 * @param string $into Table name to insert into
+	 * @param array $assignment List of column assignments
+	 * @return SQLInsert
+	 */
+	public static function create($into = null, $assignments = array()) {
+		return new SQLInsert($into, $assignments);
+	}
+	
+	
 	
 	/**
 	 * Construct a new SQLInsert object

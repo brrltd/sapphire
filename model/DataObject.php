@@ -110,18 +110,18 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 	/**
 	 * Represents a field that hasn't changed
 	 */
-	const Change_None = 0;
+	const CHANGE_NONE = 0;
 	
 	/**
 	 * Represents a field that has strictly changed type or value. E.g.
 	 * change 1 to true, or false to true
 	 */
-	const Change_Strict = 1;
+	const CHANGE_STRICT = 1;
 	
 	/**
 	 * Represents a field that has changed value. E.g. change false to true
 	 */
-	const Change_Value = 2;
+	const CHANGE_VALUE = 2;
 	
 	/**
 	 * An array indexed by fieldname, true if the field has been changed.
@@ -932,7 +932,7 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 			array_keys($this->inheritedDatabaseFields())));
 		
 		foreach($fieldNames as $fieldName) {
-			if(!isset($this->changed[$fieldName])) $this->changed[$fieldName] = self::Change_Strict;
+			if(!isset($this->changed[$fieldName])) $this->changed[$fieldName] = self::CHANGE_STRICT;
 			// Populate the null values in record so that they actually get written
 			if(!isset($this->record[$fieldName])) $this->record[$fieldName] = null;
 		}
@@ -1104,13 +1104,13 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 		}
 
 		// Check if we are doing an update or an insert
-		if(($this->ID && is_numeric($this->ID)) && !$forceInsert) {
+		if($this->ID && is_numeric($this->ID) && !$forceInsert) {
 			$isNewRecord = false;
 			
 			// Update the changed array with references to changed obj-fields
 			foreach($this->record as $k => $v) {
 				if(is_object($v) && method_exists($v, 'isChanged') && $v->isChanged()) {
-					$this->changed[$k] = self::Change_Value;
+					$this->changed[$k] = self::CHANGE_VALUE;
 				}
 			}
 			
@@ -1120,7 +1120,7 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 			// Reset all fields to changed
 			$this->changed = array();
 			foreach($this->record as $k => $v) {
-				$this->changed[$k] = self::Change_Value;
+				$this->changed[$k] = self::CHANGE_VALUE;
 			}
 		}
 
@@ -1141,13 +1141,14 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 			// generated primary key on to the rest of the manipulation
 			$baseTable = $ancestry[0];
 
-			if($isNewRecord) {
+            // Generate new ID if not specified
+			if($isNewRecord && empty($this->record['ID'])) {
 				$insert = new SQLInsert("\"$baseTable\"");
 				$insert
 					->assignSQL('Created', DB::getConn()->now())
 					->execute();
 				$this->record['ID'] = DB::getGeneratedID($baseTable);
-				$this->changed['ID'] = self::Change_Value;
+				$this->changed['ID'] = self::CHANGE_VALUE;
 			}
 
 			// Divvy up field saving into a number of database manipulations
@@ -1425,7 +1426,7 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 	 * @param string|array $sort
 	 * @param string $join Deprecated, use leftJoin($table, $joinClause) instead
 	 * @param string|array $limit
-	 * @return SQLQuery
+	 * @return SQLSelect
 	 */
 	public function getComponentsQuery($componentName, $filter = "", $sort = "", $join = "", $limit = "") {
 		if(!$componentClass = $this->has_many($componentName)) {
@@ -2185,7 +2186,7 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 		// Update the changed array with references to changed obj-fields
 		foreach($this->record as $k => $v) {
 			if(is_object($v) && method_exists($v, 'isChanged') && $v->isChanged()) {
-				$this->changed[$k] = self::Change_Value;
+				$this->changed[$k] = self::CHANGE_VALUE;
 			}
 		}
 		
@@ -2269,13 +2270,13 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 				// TODO Add check for php-level defaults which are not set in the db
 				// TODO Add check for hidden input-fields (readonly) which are not set in the db
 				// At the very least, the type has changed
-				$this->changed[$fieldName] = self::Change_Strict;
+				$this->changed[$fieldName] = self::CHANGE_STRICT;
 				
 				if((!isset($this->record[$fieldName]) && $val) || (isset($this->record[$fieldName])
 						&& $this->record[$fieldName] != $val)) {
 
 					// Value has changed as well, not just the type
-					$this->changed[$fieldName] = self::Change_Value;
+					$this->changed[$fieldName] = self::CHANGE_VALUE;
 				}
 
 				// If we've just lazy-loaded the column, then we need to populate the $original array by
@@ -2462,7 +2463,7 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 					$groupList = implode(', ', $groups->column("ID"));
 
 					// TODO Fix relation table hardcoding
-					$query = new SQLQuery(
+					$query = new SQLSelect(
 						"\"Page_Can$perm\".PageID",
 					array("\"Page_Can$perm\""),
 						"GroupID IN ($groupList)");
@@ -2471,7 +2472,7 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 
 					if($perm == "View") {
 						// TODO Fix relation table hardcoding
-						$query = new SQLQuery("\"SiteTree\".\"ID\"", array(
+						$query = new SQLSelect("\"SiteTree\".\"ID\"", array(
 							"\"SiteTree\"",
 							"LEFT JOIN \"Page_CanView\" ON \"Page_CanView\".\"PageID\" = \"SiteTree\".\"ID\""
 							), "\"Page_CanView\".\"PageID\" IS NULL");
@@ -2726,7 +2727,7 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 	 * 
 	 * @param string $callerClass The class of objects to be returned
 	 * @param string|array $filter A filter to be inserted into the WHERE clause.
-	 * Supports parameterised queries. See SQLQuery::addWhere() for syntax examples.
+	 * Supports parameterised queries. See SQLSelect::addWhere() for syntax examples.
 	 * @param string|array $sort A sort expression to be inserted into the ORDER
 	 * BY clause.  If omitted, self::$default_sort will be used.
 	 * @param string $join Deprecated 3.0 Join clause. Use leftJoin($table, $joinClause) instead.
@@ -2811,7 +2812,7 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 	 *
 	 * @param string $callerClass The class of objects to be returned
 	 * @param string|array $filter A filter to be inserted into the WHERE clause.
-	 * Supports parameterised queries. See SQLQuery::addWhere() for syntax examples.
+	 * Supports parameterised queries. See SQLSelect::addWhere() for syntax examples.
 	 * @param boolean $cache Use caching
 	 * @param string $orderby A sort expression to be inserted into the ORDER BY clause.
 	 *

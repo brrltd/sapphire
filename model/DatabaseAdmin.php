@@ -257,6 +257,15 @@ class DatabaseAdmin extends Controller {
 		
 		ClassInfo::reset_db_cache();
 	}
+	
+	/**
+	 * Clear all data out of the database
+	 * @deprecated since version 3.1
+	 */
+	public function clearAllData() {
+		Deprecation::notice('3.1', 'Use DB::getConn()->clearAllData() instead');
+		DB::getConn()->clearAllData();
+	}
 
 	/**
 	 * Remove invalid records from tables - that is, records that don't have

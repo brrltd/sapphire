@@ -16,7 +16,7 @@ class Hierarchy extends DataExtension {
 	 */
 	protected $_cache_numChildren;
 	
-	public function augmentSQL(SQLQuery &$query) {
+	public function augmentSQL(SQLSelect &$query) {
 	}
 
 	public function augmentDatabase() {

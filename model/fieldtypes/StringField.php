@@ -78,10 +78,10 @@ abstract class StringField extends DBField {
 	 * @see core/model/fieldtypes/DBField#prepValueForDB($value)
 	 */
 	public function prepValueForDB($value) {
-		if($this->nullifyEmpty && $value === '') {
-			return null;
+		if(!$this->nullifyEmpty && $value === '') {
+            return $value;
 		} else {
-			return $value;
+			return parent::prepValueForDB($value);
 		}
 	}
 	

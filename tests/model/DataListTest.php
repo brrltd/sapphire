@@ -74,7 +74,7 @@ class DataListTest extends SapphireTest {
 			. ' "DataObjectTest_TeamComment"."ID", CASE WHEN "DataObjectTest_TeamComment"."ClassName" IS NOT NULL'
 			. ' THEN "DataObjectTest_TeamComment"."ClassName" ELSE '.$db->quoteString('DataObjectTest_TeamComment')
 			. ' END AS "RecordClassName" FROM "DataObjectTest_TeamComment"';
-		$this->assertEquals($expected, $list->sql($parameters));
+		$this->assertSQLEquals($expected, $list->sql($parameters));
 	}
 	
 	public function testInnerJoin() {
@@ -95,7 +95,7 @@ class DataListTest extends SapphireTest {
 			. ' END AS "RecordClassName" FROM "DataObjectTest_TeamComment" INNER JOIN "DataObjectTest_Team" AS "Team"'
 			. ' ON "DataObjectTest_Team"."ID" = "DataObjectTest_TeamComment"."TeamID"';
 
-		$this->assertEquals($expected, $list->sql($parameters));
+		$this->assertSQLEquals($expected, $list->sql($parameters));
 	}
 	
 	public function testLeftJoin() {
@@ -116,7 +116,7 @@ class DataListTest extends SapphireTest {
 			. ' END AS "RecordClassName" FROM "DataObjectTest_TeamComment" LEFT JOIN "DataObjectTest_Team" AS "Team"'
 			. ' ON "DataObjectTest_Team"."ID" = "DataObjectTest_TeamComment"."TeamID"';
 
-		$this->assertEquals($expected, $list->sql($parameters));
+		$this->assertSQLEquals($expected, $list->sql($parameters));
 
 		// Test with namespaces (with non-sensical join, but good enough for testing)
 		$list = DataObjectTest_TeamComment::get();
@@ -138,7 +138,7 @@ class DataListTest extends SapphireTest {
 			. 'FROM "DataObjectTest_TeamComment" '
 			. 'LEFT JOIN "DataObjectTest\NamespacedClass" ON '
 			. '"DataObjectTest\NamespacedClass"."ID" = "DataObjectTest_TeamComment"."ID"';
-		$this->assertEquals($expected, $list->sql($parameters), 'Retains backslashes in namespaced classes');
+		$this->assertSQLEquals($expected, $list->sql($parameters), array(), array(), 'Retains backslashes in namespaced classes');
 
 	}
 	
@@ -651,7 +651,7 @@ class DataListTest extends SapphireTest {
 		$list = $list->exclude('Name', 'Bob');
 		
 		$sql = $list->sql($parameters);
-		$this->assertContains(
+		$this->assertSQLContains(
 			'WHERE ("DataObjectTest_TeamComment"."Comment" = ?) AND (("DataObjectTest_TeamComment"."Name" != ?))',
 			$sql);
 		$this->assertEquals(array('Phil is a unique guy, and comments on team2', 'Bob'), $parameters);
@@ -662,7 +662,7 @@ class DataListTest extends SapphireTest {
 		$list = $list->exclude('Name:LessThan', 'Bob');
 		
 		$sql = $list->sql($parameters);
-		$this->assertContains('WHERE (("DataObjectTest_TeamComment"."Name" >= ?))', $sql);
+		$this->assertSQLContains('WHERE (("DataObjectTest_TeamComment"."Name" >= ?))', $sql);
 		$this->assertEquals(array('Bob'), $parameters);
 	}
 	

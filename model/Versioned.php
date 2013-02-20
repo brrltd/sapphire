@@ -116,7 +116,7 @@ class Versioned extends DataExtension {
 	/**
 	 * Amend freshly created DataQuery objects with versioned-specific information 
 	 */
-	public function augmentDataQueryCreation(SQLQuery &$query, DataQuery &$dataQuery) {
+	public function augmentDataQueryCreation(SQLSelect &$query, DataQuery &$dataQuery) {
 		$parts = explode('.', Versioned::get_reading_mode());
 		if($parts[0] == 'Archive') {
 			$dataQuery->setQueryParam('Versioned.mode', 'archive');
@@ -132,10 +132,10 @@ class Versioned extends DataExtension {
 	}
 
 	/**
-	 * Augment the the SQLQuery that is created by the DataQuery
+	 * Augment the the SQLSelect that is created by the DataQuery
 	 * @todo Should this all go into VersionedDataQuery?
 	 */
-	public function augmentSQL(SQLQuery &$query, DataQuery &$dataQuery = null) {
+	public function augmentSQL(SQLSelect &$query, DataQuery &$dataQuery = null) {
 		$baseTable = ClassInfo::baseDataClass($dataQuery->dataClass());
 		
 		switch($dataQuery->getQueryParam('Versioned.mode')) {
@@ -275,11 +275,11 @@ class Versioned extends DataExtension {
 
 	/**
 	 * For lazy loaded fields requiring extra sql manipulation, ie versioning
-	 * @param SQLQuery $query
+	 * @param SQLSelect $query
 	 * @param DataQuery $dataQuery
 	 * @param DataObject $dataObject
 	 */
-	function augmentLoadLazyFields(SQLQuery &$query, DataQuery &$dataQuery = null, $dataObject) {
+	function augmentLoadLazyFields(SQLSelect &$query, DataQuery &$dataQuery = null, $dataObject) {
 		// The VersionedMode local variable ensures that this decorator only applies to 
 		// queries that have originated from the Versioned object, and have the Versioned 
 		// metadata set on the query object. This prevents regular queries from 
@@ -509,7 +509,7 @@ class Versioned extends DataExtension {
 	
 	/**
 	 * Augment a write-record request.
-	 * @param SQLQuery $manipulation Query to augment.
+	 * @param SQLSelect $manipulation Query to augment.
 	 */
 	public function augmentWrite(&$manipulation) {
 		$tables = array_keys($manipulation);

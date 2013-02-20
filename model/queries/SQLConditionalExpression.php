@@ -57,7 +57,7 @@ abstract class SQLConditionalExpression extends SQLExpression {
 	 * @example $query->setFrom("MyTable"); // SELECT * FROM MyTable
 	 *
 	 * @param string|array $from Escaped SQL statement, usually an unquoted table name
-	 * @return SQLQuery
+	 * @return SQLSelect
 	 */
 	public function setFrom($from) {
 		$this->from = array();
@@ -78,7 +78,7 @@ abstract class SQLConditionalExpression extends SQLExpression {
 	 * @example $query->addFrom("MyTable"); // UPDATE MyTable
 	 *
 	 * @param string|array $from Escaped SQL statement, usually an unquoted table name
-	 * @return SQLQuery
+	 * @return SQLSelect
 	 */
 	public function addFrom($from) {
 		if(is_array($from)) {
@@ -132,7 +132,7 @@ abstract class SQLConditionalExpression extends SQLExpression {
 	 * @param int $order A numerical index to control the order that joins are added to the query; lower order values 
 	 *                   will cause the query to appear first. The default is 20, and joins created automatically by the
 	 *                   ORM have a value of 10.
-	 * @return SQLQuery
+	 * @return SQLSelect
 	 */
 	public function addLeftJoin($table, $onPredicate, $tableAlias = '', $order = 20) {
 		if(!$tableAlias) {
@@ -165,7 +165,7 @@ abstract class SQLConditionalExpression extends SQLExpression {
 	 * @param int $order A numerical index to control the order that joins are added to the query; lower order values 
 	 *                   will cause the query to appear first. The default is 20, and joins created automatically by the
 	 *                   ORM have a value of 10.
-	 * @return SQLQuery
+	 * @return SQLSelect
 	 */
 	public function addInnerJoin($table, $onPredicate, $tableAlias = null, $order = 20) {
 		if(!$tableAlias) $tableAlias = $table;
@@ -191,7 +191,7 @@ abstract class SQLConditionalExpression extends SQLExpression {
 	 *
 	 * @param string $table Table to join on from the original join
 	 * @param string $filter The "ON" SQL fragment (escaped)
-	 * @return SQLQuery
+	 * @return SQLSelect
 	 */
 	public function addFilterToJoin($table, $filter) {
 		$this->from[$table]['filter'][] = $filter;
@@ -203,7 +203,7 @@ abstract class SQLConditionalExpression extends SQLExpression {
 	 *
 	 * @param string $table Table to join on from the original join
 	 * @param string $filter The "ON" SQL fragment (escaped)
-	 * @return SQLQuery
+	 * @return SQLSelect
 	 */
 	public function setJoinFilter($table, $filter) {
 		$this->from[$table]['filter'] = array($filter);
@@ -367,11 +367,11 @@ abstract class SQLConditionalExpression extends SQLExpression {
 	/**
 	 * Set a WHERE clause.
 	 * 
-	 * @see SQLQuery::addWhere() for syntax examples
+	 * @see SQLSelect::addWhere() for syntax examples
 	 *
 	 * @param mixed $where Predicate(s) to set, as escaped SQL statements or paramaterised queries
 	 * @param mixed $where,... Unlimited additional predicates
-	 * @return SQLQuery
+	 * @return SQLSelect
 	 */
 	public function setWhere($where) {
 		$where = func_num_args() > 1 ? func_get_args() : $where;
@@ -457,7 +457,7 @@ abstract class SQLConditionalExpression extends SQLExpression {
 	 *
 	 * @param mixed $where Predicate(s) to set, as escaped SQL statements or paramaterised queries
 	 * @param mixed $where,... Unlimited additional predicates
-	 * @return SQLQuery
+	 * @return SQLSelect
 	 */
 	public function addWhere($where) {
 		$where = $this->normalisePredicates(func_get_args());
@@ -485,11 +485,11 @@ abstract class SQLConditionalExpression extends SQLExpression {
 	}
 
 	/**
-	 * @see SQLQuery::addWhere()
+	 * @see SQLSelect::addWhere()
 	 * 
 	 * @param mixed $filters Predicate(s) to set, as escaped SQL statements or paramaterised queries
 	 * @param mixed $filters,... Unlimited additional predicates
-	 * @return SQLQuery
+	 * @return SQLSelect
 	 */
 	public function setWhereAny($filters) {
 		$filters = func_num_args() > 1 ? func_get_args() : $filters;
@@ -499,11 +499,11 @@ abstract class SQLConditionalExpression extends SQLExpression {
 	}
 	
 	/**
-	 * @see SQLQuery::addWhere()
+	 * @see SQLSelect::addWhere()
 	 * 
 	 * @param mixed $filters Predicate(s) to set, as escaped SQL statements or paramaterised queries
 	 * @param mixed $filters,... Unlimited additional predicates
-	 * @return SQLQuery
+	 * @return SQLSelect
 	 */
 	public function addWhereAny($filters) {
 		
@@ -707,12 +707,12 @@ abstract class SQLConditionalExpression extends SQLExpression {
 	}
     
     /**
-	 * Generates an SQLQuery object using the currently specified parameters.
+	 * Generates an SQLSelect object using the currently specified parameters.
 	 * 
-	 * @return SQLQuery
+	 * @return SQLSelect
 	 */
     public function toSelect() {
-		$select = new SQLQuery();
+		$select = new SQLSelect();
         $this->copyTo($select);
         return $select;
     }

@@ -70,10 +70,10 @@ class Aggregate extends ViewableData {
 	}
 
 	/**
-	 * Build the SQLQuery to calculate the aggregate
+	 * Build the SQLSelect to calculate the aggregate
 	 * This is a seperate function so that subtypes of Aggregate can change just this bit
 	 * @param string $attr - the SQL field statement for selection (i.e. "MAX(LastUpdated)")
-	 * @return SQLQuery
+	 * @return SQLSelect
 	 */
 	protected function query($attr) {
 		$query = DataList::create($this->type)->where($this->filter);
