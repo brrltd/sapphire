@@ -2,17 +2,28 @@
 
 /**
  * Represents schema management object for MySQL
+ * 
  * @package framework
  * @subpackage model
  */
 class MySQLSchemaManager extends DBSchemaManager {
+	
+	/**
+	 * Identifier for this schema, used for configuring schema-specific table 
+	 * creation options
+	 */
+	const ID = 'MySQL';
 
 	public function createTable($table, $fields = null, $indexes = null, $options = null, $advancedOptions = null) {
 		$fieldSchemas = $indexSchemas = "";
 
-		if (!empty($options[get_class($this)])) {
+		if (!empty($options[self::ID])) {
+			$addOptions = $options[self::ID];
+		} elseif (!empty($options[get_class($this)])) {
+			Deprecation::notice('3.2', 'Use MySQLSchemaManager::ID for referencing mysql-specific table creation options');
 			$addOptions = $options[get_class($this)];
 		} elseif (!empty($options[get_parent_class($this)])) {
+			Deprecation::notice('3.2', 'Use MySQLSchemaManager::ID for referencing mysql-specific table creation options');
 			$addOptions = $options[get_parent_class($this)];
 		} else {
 			$addOptions = "ENGINE=InnoDB";
@@ -362,7 +373,7 @@ class MySQLSchemaManager extends DBSchemaManager {
 		//DB::requireField($this->tableName, $this->name, "tinyint(1) unsigned not null default
 		//'{$this->defaultVal}'");
 
-		return 'tinyint(1) unsigned not null ' . $this->defaultClause($values);
+		return 'tinyint(1) unsigned not null' . $this->defaultClause($values);
 	}
 
 	/**
@@ -527,7 +538,7 @@ class MySQLSchemaManager extends DBSchemaManager {
 		//DB::requireField($this->tableName, $this->name, "varchar($this->size) character set utf8 collate
 		// utf8_general_ci");
 
-		return 'varchar(' . $values['precision'] . ') character set utf8 collate utf8_general_ci ' . $this->defaultClause($values);
+		return 'varchar(' . $values['precision'] . ') character set utf8 collate utf8_general_ci' . $this->defaultClause($values);
 	}
 
 	/*
