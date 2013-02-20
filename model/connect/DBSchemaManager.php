@@ -150,7 +150,7 @@ abstract class DBSchemaManager {
 	}
 
 	/**
-	 * Cancels the schema updates requested after a beginSchemaUpdate() call.
+	 * Cancels the schema updates requested during (but not after) schemaUpdate() call.
 	 */
 	public function cancelSchemaUpdate() {
 		$this->schemaUpdateTransaction = null;
@@ -165,7 +165,7 @@ abstract class DBSchemaManager {
 	}
 
 	/**
-	 * Returns true if schema modifications were requested after a beginSchemaUpdate() call.
+	 * Returns true if schema modifications were requested during (but not after) schemaUpdate() call.
 	 */
 	public function doesSchemaNeedUpdating() {
 		return (bool) $this->schemaUpdateTransaction;

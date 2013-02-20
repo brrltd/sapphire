@@ -27,17 +27,19 @@ class MySQLDatabaseTest extends SapphireTest {
 	public function testFieldsDontRerequestChanges() {
 		// These are MySQL specific :-S
 		if(DB::getConn() instanceof MySQLDatabase) {
-			$db = DB::getConn();
+			$schema = DB::getSchema();
+			$test = $this;
 			DB::quiet();
 		
 			// Verify that it doesn't need to be recreated
-			$db->beginSchemaUpdate();
-			$obj = new MySQLDatabaseTest_DO();
-			$obj->requireTable();
-			$needsUpdating = $db->doesSchemaNeedUpdating();
-			$db->cancelSchemaUpdate();
+			$schema->schemaUpdate(function() use ($test, $schema) {
+				$obj = new MySQLDatabaseTest_DO();
+				$obj->requireTable();
+				$needsUpdating = $schema->doesSchemaNeedUpdating();
+				$schema->cancelSchemaUpdate();
 
-			$this->assertFalse($needsUpdating);
+				$test->assertFalse($needsUpdating);
+			});
 		}
 	}
 }
