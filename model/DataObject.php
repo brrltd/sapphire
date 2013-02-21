@@ -1227,18 +1227,17 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 			$this->invokeWithExtensions('onAfterSkippedWrite');
 		}
 
-		// Clears the cache for this object so get_one returns the correct object.
-		$this->flushCache();
-
 		if(!isset($this->record['Created'])) {
 			$this->record['Created'] = $now;
 		}
 		$this->record['LastEdited'] = $now;
 
 		// Write relations as necessary
-		if($writeComponents) {
-			$this->writeComponents(true);
-		}
+		if($writeComponents) $this->writeComponents(true);
+
+		// Clears the cache for this object so get_one returns the correct object.
+		$this->flushCache();
+		
 		return $this->record['ID'];
 	}
 
