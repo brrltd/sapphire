@@ -1026,6 +1026,7 @@ class DataObjectTest extends SapphireTest {
 		);
 		$this->assertEquals($ceo->ID, $ceo->Company()->CEOID, 'Remote IDs are automatically set.');
 		
+		$ceo->Name = 'Edward Scissorhands';
 		$ceo->write(false, false, false, true);
 		$this->assertTrue($ceo->Company()->isInDB(), 'write() writes belongs_to components to the database.');
 		
