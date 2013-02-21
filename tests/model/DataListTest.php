@@ -138,7 +138,7 @@ class DataListTest extends SapphireTest {
 			. 'FROM "DataObjectTest_TeamComment" '
 			. 'LEFT JOIN "DataObjectTest\NamespacedClass" ON '
 			. '"DataObjectTest\NamespacedClass"."ID" = "DataObjectTest_TeamComment"."ID"';
-		$this->assertSQLEquals($expected, $list->sql($parameters), array(), array(), 'Retains backslashes in namespaced classes');
+		$this->assertSQLEquals($expected, $list->sql($parameters), 'Retains backslashes in namespaced classes');
 
 	}
 	
