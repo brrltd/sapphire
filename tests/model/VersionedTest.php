@@ -199,12 +199,14 @@ class VersionedTest extends SapphireTest {
 		$page->URLSegment = "testWritingNewToStage";
 		$page->write();
 		
-		$live = Versioned::get_by_stage('VersionedTest_DataObject', 'Live',
-			"\"VersionedTest_DataObject_Live\".\"ID\"='$page->ID'");
+		$live = Versioned::get_by_stage('VersionedTest_DataObject', 'Live', array(
+			'"VersionedTest_DataObject_Live"."ID"' => $page->ID
+        ));
 		$this->assertEquals(0, $live->count());
 		
-		$stage = Versioned::get_by_stage('VersionedTest_DataObject', 'Stage',
-			"\"VersionedTest_DataObject\".\"ID\"='$page->ID'");
+		$stage = Versioned::get_by_stage('VersionedTest_DataObject', 'Stage',array(
+			'"VersionedTest_DataObject"."ID"' => $page->ID
+        ));
 		$this->assertEquals(1, $stage->count());
 		$this->assertEquals($stage->First()->Title, 'testWritingNewToStage');
 		
@@ -226,13 +228,15 @@ class VersionedTest extends SapphireTest {
 		$page->URLSegment = "testWritingNewToLive";
 		$page->write();
 		
-		$live = Versioned::get_by_stage('VersionedTest_DataObject', 'Live',
-			"\"VersionedTest_DataObject_Live\".\"ID\"='$page->ID'");
+		$live = Versioned::get_by_stage('VersionedTest_DataObject', 'Live',array(
+			'"VersionedTest_DataObject_Live"."ID"' => $page->ID
+        ));
 		$this->assertEquals(1, $live->count());
 		$this->assertEquals($live->First()->Title, 'testWritingNewToLive');
 		
-		$stage = Versioned::get_by_stage('VersionedTest_DataObject', 'Stage',
-			"\"VersionedTest_DataObject\".\"ID\"='$page->ID'");
+		$stage = Versioned::get_by_stage('VersionedTest_DataObject', 'Stage',array(
+			'"VersionedTest_DataObject"."ID"' => $page->ID
+        ));
 		$this->assertEquals(0, $stage->count());
 		
 		Versioned::reading_stage($origStage);
@@ -266,7 +270,7 @@ class VersionedTest extends SapphireTest {
 	}
 	
 	/**
-	 * Test that SQLQuery::queriedTables() applies the version-suffixes properly.
+	 * Test that SQLSelect::queriedTables() applies the version-suffixes properly.
 	 */
 	public function testQueriedTables() {
 		Versioned::reading_stage('Live');

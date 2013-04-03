@@ -224,7 +224,7 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 
 		// Set up fixture
 		if($fixtureFile || $this->usesDatabase || !self::using_temp_db()) {
-			if(substr(DB::getConn()->currentDatabase(), 0, strlen($prefix) + 5) 
+			if(substr(DB::getConn()->getSelectedDatabase(), 0, strlen($prefix) + 5) 
 					!= strtolower(sprintf('%stmpdb', $prefix))) {
 
 				//echo "Re-creating temp database... ";
@@ -683,6 +683,68 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 		}
 	} 
 	
+    /**
+     * Removes sequences of repeated whitespace characters from SQL queries
+     * making them suitable for string comparison
+     * 
+     * @param string $sql
+     * @return string The cleaned and normalised SQL string
+     */
+    protected function normaliseSQL($sql) {
+		return trim(preg_replace('/\s+/m', ' ', $sql));
+    }
+	
+	/**
+	 * Asserts that two SQL queries are equivalent
+	 * 
+	 * @param string $expectedSQL
+	 * @param string $actualSQL
+     * @param string $message
+     * @param float $delta
+     * @param integer $maxDepth
+     * @param boolean $canonicalize
+     * @param boolean $ignoreCase
+	 */
+	public function assertSQLEquals($expectedSQL, $actualSQL, $message = '', $delta = 0, $maxDepth = 10, $canonicalize = false, $ignoreCase = false) {
+		// Normalise SQL queries to remove patterns of repeating whitespace
+		$expectedSQL = $this->normaliseSQL($expectedSQL);
+		$actualSQL = $this->normaliseSQL($actualSQL);
+        
+		$this->assertEquals($expectedSQL, $actualSQL, $message, $delta, $maxDepth, $canonicalize, $ignoreCase);
+	}
+    
+    /**
+     * Asserts that a SQL query contains a SQL fragment
+     *
+     * @param string $needleSQL
+     * @param string $haystackSQL
+     * @param string $message
+     * @param boolean $ignoreCase
+     * @param boolean $checkForObjectIdentity
+     */
+    public function assertSQLContains($needleSQL, $haystackSQL, $message = '', $ignoreCase = false, $checkForObjectIdentity = true) {
+        $needleSQL = $this->normaliseSQL($needleSQL);
+        $haystackSQL = $this->normaliseSQL($haystackSQL);
+        
+        $this->assertContains($needleSQL, $haystackSQL, $message, $ignoreCase, $checkForObjectIdentity);
+    }
+    
+    /**
+     * Asserts that a SQL query contains a SQL fragment
+     *
+     * @param string $needleSQL
+     * @param string $haystackSQL
+     * @param string $message
+     * @param boolean $ignoreCase
+     * @param boolean $checkForObjectIdentity
+     */
+    public function assertSQLNotContains($needleSQL, $haystackSQL, $message = '', $ignoreCase = false, $checkForObjectIdentity = true) {
+        $needleSQL = $this->normaliseSQL($needleSQL);
+        $haystackSQL = $this->normaliseSQL($haystackSQL);
+        
+        $this->assertNotContains($needleSQL, $haystackSQL, $message, $ignoreCase, $checkForObjectIdentity);
+    }
+	
 	/**
 	 * Helper function for the DOS matchers
 	 */
@@ -708,7 +770,7 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 	public static function using_temp_db() {
 		$dbConn = DB::getConn();
 		$prefix = defined('SS_DATABASE_PREFIX') ? SS_DATABASE_PREFIX : 'ss_';
-		return $dbConn && (substr($dbConn->currentDatabase(), 0, strlen($prefix) + 5) 
+		return $dbConn && (substr($dbConn->getSelectedDatabase(), 0, strlen($prefix) + 5) 
 			== strtolower(sprintf('%stmpdb', $prefix)));
 	}
 	
@@ -716,7 +778,7 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 		// Delete our temporary database
 		if(self::using_temp_db()) {
 			$dbConn = DB::getConn();
-			$dbName = $dbConn->currentDatabase();
+			$dbName = $dbConn->getSelectedDatabase();
 			if($dbName && DB::getConn()->databaseExists($dbName)) {
 				// Some DataExtensions keep a static cache of information that needs to 
 				// be reset whenever the database is killed
@@ -726,7 +788,7 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 				}
 
 				// echo "Deleted temp database " . $dbConn->currentDatabase() . "\n";
-				$dbConn->dropDatabase();
+				$dbConn->dropCurrentDatabase();
 			}
 		}
 	}
@@ -736,8 +798,7 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 	 */
 	public static function empty_temp_db() {
 		if(self::using_temp_db()) {
-			$dbadmin = new DatabaseAdmin();
-			$dbadmin->clearAllData();
+			DB::getConn()->clearAllData();
 			
 			// Some DataExtensions keep a static cache of information that needs to 
 			// be reset whenever the database is cleaned out
@@ -764,8 +825,7 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 			$dbname = strtolower(sprintf('%stmpdb', $prefix)) . rand(1000000,9999999);
 		}
 
-		$dbConn->selectDatabase($dbname);
-		$dbConn->createDatabase();
+		$dbConn->selectDatabase($dbname, true);
 
 		$st = Injector::inst()->create('SapphireTest');
 		$st->resetDBSchema();
@@ -778,9 +838,9 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 	
 	public static function delete_all_temp_dbs() {
 		$prefix = defined('SS_DATABASE_PREFIX') ? SS_DATABASE_PREFIX : 'ss_';
-		foreach(DB::getConn()->allDatabaseNames() as $dbName) {
+		foreach(DB::getSchema()->databaseList() as $dbName) {
 			if(preg_match(sprintf('/^%stmpdb[0-9]+$/', $prefix), $dbName)) {
-				DB::getConn()->dropDatabaseByName($dbName);
+				DB::getSchema()->dropDatabase($dbName);
 				if(Director::is_cli()) {
 					echo "Dropped database \"$dbName\"" . PHP_EOL;
 				} else {
@@ -805,27 +865,26 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 			$dataClasses = ClassInfo::subclassesFor('DataObject');
 			array_shift($dataClasses);
 
-			$conn = DB::getConn();
-			$conn->beginSchemaUpdate();
 			DB::quiet();
-
-			foreach($dataClasses as $dataClass) {
-				// Check if class exists before trying to instantiate - this sidesteps any manifest weirdness
-				if(class_exists($dataClass)) {
-					$SNG = singleton($dataClass);
-					if(!($SNG instanceof TestOnly)) $SNG->requireTable();
+			$schema = DB::getSchema();
+			$extraDataObjects = $includeExtraDataObjects ? $this->extraDataObjects : null;
+			$schema->schemaUpdate(function() use($dataClasses, $extraDataObjects){
+				foreach($dataClasses as $dataClass) {
+					// Check if class exists before trying to instantiate - this sidesteps any manifest weirdness
+					if(class_exists($dataClass)) {
+						$SNG = singleton($dataClass);
+						if(!($SNG instanceof TestOnly)) $SNG->requireTable();
+					}
 				}
-			}
-
-			// If we have additional dataobjects which need schema, do so here:
-			if($includeExtraDataObjects && $this->extraDataObjects) {
-				foreach($this->extraDataObjects as $dataClass) {
-					$SNG = singleton($dataClass);
-					if(singleton($dataClass) instanceof DataObject) $SNG->requireTable();
+				
+				// If we have additional dataobjects which need schema, do so here:
+				if($extraDataObjects) {
+					foreach($extraDataObjects as $dataClass) {
+						$SNG = singleton($dataClass);
+						if(singleton($dataClass) instanceof DataObject) $SNG->requireTable();
+					}
 				}
-			}
-
-			$conn->endSchemaUpdate();
+			});
 
 			ClassInfo::reset_db_cache();
 			singleton('DataObject')->flushCache();
@@ -847,7 +906,9 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 			$permission->write();
 			$group->Permissions()->add($permission);
 			
-			$member = DataObject::get_one('Member', sprintf('"Email" = \'%s\'', "$permCode@example.org"));
+			$member = DataObject::get_one('Member', array(
+				'"Member"."Email"' => "$permCode@example.org"
+			));
 			if(!$member) $member = Injector::inst()->create('Member');
 			
 			$member->FirstName = $permCode;

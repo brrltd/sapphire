@@ -162,12 +162,12 @@ class FixtureBlueprint {
 			// If LastEdited was set in the fixture, set it here
 			if($data && array_key_exists('LastEdited', $data)) {
 				$edited = $this->parseValue($data['LastEdited'], $fixtures);
-				DB::manipulate(array(
-					$class => array(
-						"command" => "update", "id" => $obj->id,
-						"fields" => array("LastEdited" => "'".$edited."'")
-					)
-				));
+				$update = new SQLUpdate(
+					$class,
+					array('"LastEdited"' => $edited),
+					array('"ID"' => $obj->id)
+				);
+				$update->execute();
 			}	
 		} catch(Exception $e) {
 			Config::inst()->update('DataObject', 'validation_enabled', $validationenabled);

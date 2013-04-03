@@ -8,7 +8,27 @@
  * @package framework
  * @subpackage model
  */
-class MySQLDatabaseConfigurationHelper implements DatabaseConfigurationHelper {
+class MySQLDatabaseConfigurationHelper extends DatabaseConfigurationHelper {
+	
+	public function makeConnection($databaseConfig) {
+		switch($databaseConfig['type']) {
+			case 'MySQLDatabase':
+			case 'MySQLPDODatabase': // Not actually used, but just in case
+				$connector = new PDOConnector();
+				break;
+			case 'MySQLiDatabase':
+				$connector = new MySQLiConnector();
+				break;
+			default:
+				return null;
+		}
+		
+		// Connect
+		$databaseConfig['driver'] = 'mysql';
+		@$connector->connect($databaseConfig);
+		@$connector->preparedQuery("SET sql_mode = ?", array('ANSI'));
+		return $connector;
+	}
 
 	/**
 	 * Ensure that the database function for connectivity is available.
@@ -18,49 +38,14 @@ class MySQLDatabaseConfigurationHelper implements DatabaseConfigurationHelper {
 	 * @return boolean
 	 */
 	public function requireDatabaseFunctions($databaseConfig) {
-		return class_exists('MySQLi');
-	}
-
-	/**
-	 * Ensure that the database server exists.
-	 * @param array $databaseConfig Associative array of db configuration, e.g. "server", "username" etc
-	 * @return array Result - e.g. array('success' => true, 'error' => 'details of error')
-	 */
-	public function requireDatabaseServer($databaseConfig) {
-		$success = false;
-		$error = '';
-		$conn = @new MySQLi($databaseConfig['server'], $databaseConfig['username'], $databaseConfig['password']);
-		if($conn && $conn->connect_errno) {
-			$success = false;
-			$error = $conn->connect_error;
-		} else {
-			$success = true;
+		switch($databaseConfig['type']) {
+			case 'MySQLiDatabase':
+				return class_exists('MySQLi');
+			case 'MySQLDatabase':
+				return class_exists('PDO') && in_array('mysql', PDO::getAvailableDrivers());
+			default:
+				return false;
 		}
-
-		return array(
-			'success' => $success,
-			'error' => $error
-		);
-	}
-
-	/**
-	 * Get the database version for the MySQL connection, given the
-	 * database parameters.
-	 * @return mixed string Version number as string | boolean FALSE on failure
-	 */
-	public function getDatabaseVersion($databaseConfig) {
-		$conn = new MySQLi($databaseConfig['server'], $databaseConfig['username'], $databaseConfig['password']);
-		if(!$conn) return false;
-		$version = $conn->server_info;
-		if(!$version) {
-			// fallback to trying a query
-			$result = $conn->query('SELECT VERSION()');
-			$row = $result->fetch_array();
-			if($row && isset($row[0])) {
-				$version = trim($row[0]);
-			}
-		}
-		return $version;
 	}
 
 	/**
@@ -87,27 +72,6 @@ class MySQLDatabaseConfigurationHelper implements DatabaseConfigurationHelper {
 	}
 
 	/**
-	 * Ensure a database connection is possible using credentials provided.
-	 * @param array $databaseConfig Associative array of db configuration, e.g. "server", "username" etc
-	 * @return array Result - e.g. array('success' => true, 'error' => 'details of error')
-	 */
-	public function requireDatabaseConnection($databaseConfig) {
-		$success = false;
-		$error = '';
-		$conn = new MySQLi($databaseConfig['server'], $databaseConfig['username'], $databaseConfig['password']);
-		if($conn) {
-			$success = true;
-		} else {
-			$success = false;
-			$error = ($conn) ? $conn->connect_error : '';
-		}
-		return array(
-			'success' => $success,
-			'error' => $error
-		);
-	}
-
-	/**
 	 * Ensure that the database connection is able to use an existing database,
 	 * or be able to create one if it doesn't exist.
 	 *
@@ -117,17 +81,29 @@ class MySQLDatabaseConfigurationHelper implements DatabaseConfigurationHelper {
 	public function requireDatabaseOrCreatePermissions($databaseConfig) {
 		$success = false;
 		$alreadyExists = false;
-		$conn = new MySQLi($databaseConfig['server'], $databaseConfig['username'], $databaseConfig['password']);
-		if($conn && $conn->select_db($databaseConfig['database'])) {
-			$success = true;
-			$alreadyExists = true;
+		
+		$check = $this->requireDatabaseConnection($databaseConfig);
+		$conn = $check['connection'];
+		if(!$conn || !$check['success']) {
+			// No success
 		} else {
-			if($conn && $conn->query('CREATE DATABASE testing123')) {
-				$conn->query('DROP DATABASE testing123');
+			// does this database exist already?
+			$list = $conn->query("SHOW DATABASES")->column();
+			if(in_array($databaseConfig['database'], $list)) {
 				$success = true;
+				$alreadyExists = true;
+			} else{
+				// If no database exists then check DDL permissions
 				$alreadyExists = false;
+				foreach($conn->query("SHOW GRANTS FOR CURRENT_USER")->column() as $grant) {
+					if(preg_match('/GRANT.+((ALL PRIVILEGES)|(ALTER)).+ON.+TO/i', $grant)) {
+						$success = true;
+						break;
+					}
+				}
 			}
 		}
+		
 		return array(
 			'success' => $success,
 			'alreadyExists' => $alreadyExists
@@ -143,30 +119,18 @@ class MySQLDatabaseConfigurationHelper implements DatabaseConfigurationHelper {
 	 */
 	public function requireDatabaseAlterPermissions($databaseConfig) {
 		$success = false;
-		$conn = new MySQLi($databaseConfig['server'], $databaseConfig['username'], $databaseConfig['password']);
-		if($conn) {
-			if ($res = $conn->query('SHOW GRANTS')) {
-				// Annoyingly, MySQL 'escapes' the database, so we need to do it too.
-				$db = str_replace(array('%', '_', '`'), array('\%', '\_', '``'), $databaseConfig['database']);
-				while ($row = $res->fetch_array()) {
-					if (preg_match('/^GRANT (.+) ON (.+) TO/', $row[0], $matches)) {
-						// Need to change to an array of permissions, because ALTER is contained in ALTER ROUTINES.
-						$permission = array_map('trim', explode(',', $matches[1]));
-						$on_database = $matches[2];
-						// The use of both ` and " is because of ANSI mode.
-						if (in_array('ALL PRIVILEGES', $permission) and (
-								($on_database == '*.*') or ($on_database == '`' . $db . '`.*')
-								or ($on_database == '"' . $db . '".*'))) {
-							$success = true;
-							break;
-						}
-						if (in_array('ALTER', $permission) and (
-								($on_database == '*.*') or ($on_database == '`' . $db . '`.*')
-								or ($on_database == '"' . $db . '".*'))) {
-							$success = true;
-							break;
-						}
-					}
+		$check = $this->requireDatabaseConnection($databaseConfig);
+		$conn = $check['connection'];
+		if(!$conn || !$check['success']) {
+			// No success
+		} else {
+			// Annoyingly, MySQL 'escapes' the database, so we need to do it too.
+			$dbEscape = preg_quote($databaseConfig['database']);
+			$wildcardEscape = preg_quote('*.');
+			foreach($conn->query("SHOW GRANTS FOR CURRENT_USER")->column() as $grant) {
+				if (preg_match('/GRANT.+((ALL PRIVILEGES)|(ALTER)).+ON.+(('.$dbEscape.')|('.$wildcardEscape.')).+TO/', $grant)) {
+					$success = true;
+					break;
 				}
 			}
 		}

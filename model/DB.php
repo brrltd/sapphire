@@ -49,7 +49,7 @@ class DB {
 
 	/**
 	 * Get the global database connection.
-	 * @param $name An optional name given to a connection in the DB::setConn() call.  If omitted, 
+	 * @param string $name An optional name given to a connection in the DB::setConn() call.  If omitted, 
 	 * the default connection is returned.
 	 * @return SS_Database
 	 */
@@ -57,6 +57,48 @@ class DB {
 		if(isset(self::$connections[$name])) {
 			return self::$connections[$name];
 		}
+	}
+	
+	/**
+	 * Retrieves the schema manager for the current database
+	 * 
+	 * @param string $name An optional name given to a connection in the DB::setConn() call.  If omitted, 
+	 * the default connection is returned.
+	 * @return DBSchemaManager
+	 */
+	public static function getSchema($name = 'default') {
+		$connection = self::getConn($name);
+		if($connection) return $connection->getSchemaManager();
+	}
+	
+	/**
+	 * Builds a sql query with the specified connection
+	 * 
+	 * @param SQLExpression $expression The expression object to build from
+	 * @param array $parameters Out parameter for the resulting query parameters
+	 * @param string $name An optional name given to a connection in the DB::setConn() call.  If omitted, 
+	 * the default connection is returned.
+	 * @return string The resulting SQL as a string
+	 */
+	public static function buildSQL(SQLExpression $expression, &$parameters, $name = 'default') {
+		$connection = self::getConn($name);
+		if($connection) {
+			return $connection->getQueryBuilder()->buildSQL($expression, $parameters);
+		} else {
+			$parameters = array();
+			return null;
+		}
+	}
+	
+	/**
+	 * Retrieves the connector object for the current database
+	 * @param string $name An optional name given to a connection in the DB::setConn() call.  If omitted, 
+	 * the default connection is returned.
+	 * @return DBConnector
+	 */
+	public static function getConnector($name = 'default') {
+		$connection = self::getConn($name);
+		if($connection) return $connection->getConnector();
 	}
 	
 	/**
@@ -149,8 +191,9 @@ class DB {
 	 * Connect to a database.
 	 * Given the database configuration, this method will create the correct subclass of SS_Database,
 	 * and set it as the global connection.
-	 * @param array $database A map of options. The 'type' is the name of the subclass of SS_Database to use. For the
-	 *                        rest of the options, see the specific class.
+	 * 
+	 * @param array $databaseConfig A map of options. The 'type' is the name of 
+	 * the subclass of SS_Database to use. For the rest of the options, see the specific class.
 	 */
 	public static function connect($databaseConfig) {
 		// This is used by the "testsession" module to test up a test session using an alternative name
@@ -163,9 +206,13 @@ class DB {
 		}
 
 		self::$connection_attempted = true;
-
+		
 		$dbClass = $databaseConfig['type'];
-		$conn = new $dbClass($databaseConfig);
+		
+		// Using Injector->get allows us to use registered configurations
+		// which may or may not map to explicit objects
+		$conn = Injector::inst()->get($dbClass);
+		$conn->connect($databaseConfig);
 
 		self::setConn($conn);
 	}
@@ -180,15 +227,6 @@ class DB {
 	}
 
 	/**
-	 * Build the connection string from input.
-	 * @param array $parameters The connection details.
-	 * @return string $connect The connection string.
-	 **/
-	public static function getConnect($parameters) {
-		return self::getConn()->getConnect($parameters);
-	}
-
-	/**
 	 * Execute the given SQL query.
 	 * @param string $sql The SQL query to execute
 	 * @param int $errorLevel The level of error reporting to enable for the query
@@ -198,6 +236,41 @@ class DB {
 		self::$lastQuery = $sql;
 		
 		return self::getConn()->query($sql, $errorLevel);
+	}
+	
+	/**
+	 * Helper function for generating a list of parameter placeholders for the
+	 * given argument(s)
+	 * 
+	 * @param array|integer $input An array of items needing placeholders, or a
+	 * number to specify the number of placeholders
+	 * @param string The string to join each placeholder together with
+	 * @return string|null Either a list of placeholders, or null
+	 */
+	public static function placeholders($input, $join = ', ') {
+		if(is_array($input)) {
+			$number = count($input);
+		} elseif(is_numeric($input)) {
+			$number = intval($input);
+		} else {
+			return null;
+		}
+		if($number === 0) return null;
+		return implode($join, array_fill(0, $number, '?'));
+	}
+	
+	/**
+	 * Execute the given SQL parameterised query with the specified arguments
+	 * 
+	 * @param string $sql The SQL query to execute. The ? character will denote parameters.
+	 * @param array $parameters An ordered list of arguments.
+	 * @param int $errorLevel The level of error reporting to enable for the query
+	 * @return SS_Query
+	 */
+	public static function preparedQuery($sql, $parameters, $errorLevel = E_USER_ERROR) {
+		self::$lastQuery = $sql;
+		
+		return self::getConn()->preparedQuery($sql, $parameters, $errorLevel);
 	}
 
 	/**
@@ -238,6 +311,8 @@ class DB {
 	 * That's a limitation of the system that's due to it being written for {@link DataObject::write()}, 
 	 * which needs to do a single write on a number of different tables.
 	 * 
+	 * @todo Update this to support paramaterised queries
+	 * 
 	 * @param array $manipulation
 	 */
 	public static function manipulate($manipulation) {
@@ -258,36 +333,33 @@ class DB {
 	 * @return boolean
 	 */
 	public static function isActive() {
-		if($conn = self::getConn()) return $conn->isActive();
-		else return false;
+		return ($conn = self::getConn()) && $conn->isActive();
 	}
 
 	/**
 	 * Create the database and connect to it. This can be called if the
 	 * initial database connection is not successful because the database
 	 * does not exist.
-	 * @param string $connect Connection string
-	 * @param string $username SS_Database username
-	 * @param string $password SS_Database Password
-	 * @param string $database SS_Database to which to create
+	 * 
+	 * @param string $database Name of database to create
 	 * @return boolean Returns true if successful
 	 */
-	public static function createDatabase($connect, $username, $password, $database) {
-		return self::getConn()->createDatabase($connect, $username, $password, $database);
+	public static function createDatabase($database) {
+		return self::getConn()->selectDatabase($database, true);
 	}
 
 	/**
 	 * Create a new table.
-	 * @param $tableName The name of the table
-	 * @param $fields A map of field names to field types
-	 * @param $indexes A map of indexes
-	 * @param $options An map of additional options.  The available keys are as follows:
+	 * @param string $tableName The name of the table
+	 * @param array$fields A map of field names to field types
+	 * @param array $indexes A map of indexes
+	 * @param array $options An map of additional options.  The available keys are as follows:
 	 *   - 'MSSQLDatabase'/'MySQLDatabase'/'PostgreSQLDatabase' - database-specific options such as "engine" for MySQL.
 	 *   - 'temporary' - If true, then a temporary table will be created
-	 * @return The table name generated.  This may be different from the table name, for example with temporary tables.
+	 * @return string The table name generated.  This may be different from the table name, for example with temporary tables.
 	 */
 	public static function createTable($table, $fields = null, $indexes = null, $options = null) {
-		return self::getConn()->createTable($table, $fields, $indexes, $options);
+		return self::getSchema()->createTable($table, $fields, $indexes, $options);
 	}
 
 	/**
@@ -297,78 +369,83 @@ class DB {
 	 * @param string $spec The field specification, eg 'INTEGER NOT NULL'
 	 */
 	public static function createField($table, $field, $spec) {
-		return self::getConn()->createField($table, $field, $spec);
+		return self::getSchema()->createField($table, $field, $spec);
 	}
 
 	/**
 	 * Generate the following table in the database, modifying whatever already exists
 	 * as necessary.
+	 * 
 	 * @param string $table The name of the table
 	 * @param string $fieldSchema A list of the fields to create, in the same form as DataObject::$db
 	 * @param string $indexSchema A list of indexes to create.  The keys of the array are the names of the index.
-	 * @param boolean $hasAutoIncPK A flag indicating that the primary key on this table is an autoincrement type
 	 * The values of the array can be one of:
 	 *   - true: Create a single column index on the field named the same as the index.
 	 *   - array('fields' => array('A','B','C'), 'type' => 'index/unique/fulltext'): This gives you full
 	 *     control over the index.
+	 * @param boolean $hasAutoIncPK A flag indicating that the primary key on this table is an autoincrement type
 	 * @param string $options SQL statement to append to the CREATE TABLE call.
+	 * @param array $extensions List of extensions
 	 */
-	public static function requireTable($table, $fieldSchema = null, $indexSchema = null, $hasAutoIncPK=true,
-			$options = null, $extensions=null) {
-		
-		return self::getConn()->requireTable($table, $fieldSchema, $indexSchema, $hasAutoIncPK, $options, $extensions);
+	public static function requireTable($table, $fieldSchema = null, $indexSchema = null, $hasAutoIncPK = true, $options = null, $extensions=null) {
+		return self::getSchema()->requireTable($table, $fieldSchema, $indexSchema, $hasAutoIncPK, $options, $extensions);
 	}
 
 	/**
 	 * Generate the given field on the table, modifying whatever already exists as necessary.
+	 * 
 	 * @param string $table The table name.
 	 * @param string $field The field name.
 	 * @param string $spec The field specification.
 	 */
 	public static function requireField($table, $field, $spec) {
-		return self::getConn()->requireField($table, $field, $spec);
+		return self::getSchema()->requireField($table, $field, $spec);
 	}
 
 	/**
 	 * Generate the given index in the database, modifying whatever already exists as necessary.
+	 * 
 	 * @param string $table The table name.
 	 * @param string $index The index name.
 	 * @param string|boolean $spec The specification of the index. See requireTable() for more information.
 	 */
 	public static function requireIndex($table, $index, $spec) {
-		return self::getConn()->requireIndex($table, $index, $spec);
+		self::getSchema()->requireIndex($table, $index, $spec);
 	}
 
 	/**
 	 * If the given table exists, move it out of the way by renaming it to _obsolete_(tablename).
+	 * 
 	 * @param string $table The table name.
 	 */
 	public static function dontRequireTable($table) {
-		return self::getConn()->dontRequireTable($table);
+		self::getSchema()->dontRequireTable($table);
 	}
 	
 	/**
 	 * See {@link SS_Database->dontRequireField()}.
 	 * 
 	 * @param string $table The table name.
-	 * @param string $fieldName
+	 * @param string $fieldName The field name not to require
 	 */
 	public static function dontRequireField($table, $fieldName) {
-		return self::getConn()->dontRequireField($table, $fieldName);
+		self::getSchema()->dontRequireField($table, $fieldName);
 	}
 
 	/**
 	 * Checks a table's integrity and repairs it if necessary.
-	 * @var string $tableName The name of the table.
+	 * 
+	 * @param string $tableName The name of the table.
 	 * @return boolean Return true if the table has integrity after the method is complete.
 	 */
 	public static function checkAndRepairTable($table) {
-		return self::getConn()->checkAndRepairTable($table);
+		return self::getSchema()->checkAndRepairTable($table);
 	}
 
 	/**
 	 * Return the number of rows affected by the previous operation.
-	 * @return int
+	 * 
+	 * @return integer The number of affected rows
 	 */
 	public static function affectedRows() {
 		return self::getConn()->affectedRows();
@@ -377,34 +454,39 @@ class DB {
 	/**
 	 * Returns a list of all tables in the database.
 	 * The table names will be in lower case.
-	 * @return array
+	 * 
+	 * @return array The list of tables
 	 */
 	public static function tableList() {
-		return self::getConn()->tableList();
+		return self::getSchema()->tableList();
 	}
 	
 	/**
 	 * Get a list of all the fields for the given table.
 	 * Returns a map of field name => field spec.
+	 * 
 	 * @param string $table The table name.
-	 * @return array
+	 * @return array The list of fields
 	 */
 	public static function fieldList($table) {
-		return self::getConn()->fieldList($table);
+		return self::getSchema()->fieldList($table);
 	}
 
 	/**
 	 * Enable supression of database messages.
 	 */
 	public static function quiet() {
-		return self::getConn()->quiet();
+		self::getSchema()->quiet();
 	}
 	
 	/**
-	 * Show a message about database alteration.
+	 * Show a message about database alteration	
+	 *
+	 * @param string $message to display
+	 * @param string $type one of [created|changed|repaired|obsolete|deleted|error]
 	 */
-	public static function alteration_message($message,$type="") {
-		return self::getConn()->alterationMessage($message, $type);
+	public static function alteration_message($message, $type = "") {
+		self::getSchema()->alterationMessage($message, $type);
 	}
 	
 }

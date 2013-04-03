@@ -2,7 +2,7 @@
 
 /**
  * An object representing a query of data from the DataObject's supporting database.
- * Acts as a wrapper over {@link SQLQuery} and performs all of the query generation.
+ * Acts as a wrapper over {@link SQLSelect} and performs all of the query generation.
  * Used extensively by {@link DataList}.
  *
  * Unlike DataList, modifiers on DataQuery modify the object rather than returning a clone.
@@ -19,7 +19,7 @@ class DataQuery {
 	protected $dataClass;
 	
 	/**
-	 * @var SQLQuery
+	 * @var SQLSelect
 	 */
 	protected $query;
 	
@@ -65,7 +65,7 @@ class DataQuery {
 	}
 
 	/**
-	 * Return the {@link SQLQuery} object that represents the current query; note that it will
+	 * Return the {@link SQLSelect} object that represents the current query; note that it will
 	 * be a clone of the object.
 	 */
 	public function query() {
@@ -75,15 +75,34 @@ class DataQuery {
 	
 	/**
 	 * Remove a filter from the query
+	 * 
+	 * @param string|array $fieldExpression The predicate of the condition to remove
+	 * (ignoring parameters). The expression will be considered a match if it's
+	 * contained within any other predicate.
+	 * @return DataQuery Self reference
 	 */
 	public function removeFilterOn($fieldExpression) {
 		$matched = false;
+		
+		// If given a parameterised condition extract only the condition
+		if(is_array($fieldExpression)) {
+			reset($fieldExpression);
+			$fieldExpression = key($fieldExpression);
+		}
 
 		$where = $this->query->getWhere();
-		foreach($where as $i => $clause) {
-			if(strpos($clause, $fieldExpression) !== false) {
-				unset($where[$i]);
-				$matched = true;
+		// Iterate through each condition
+		foreach($where as $i => $condition) {
+			// As each condition is a single length array, do a single
+			// iteration to extract the predicate and parameters
+			foreach($condition as $predicate => $parameters) {
+				// @see SQLSelect::addWhere for why this is required here
+				if(strpos($predicate, $fieldExpression) !== false) {
+					unset($where[$i]);
+					$matched = true;
+				}
+				// Enforce single-item condition predicate => parameters structure
+				break;
 			}
 		}
 
@@ -120,7 +139,7 @@ class DataQuery {
 		$baseClass = array_shift($tableClasses);
 
 		// Build our intial query
-		$this->query = new SQLQuery(array());
+		$this->query = new SQLSelect(array());
 		$this->query->setDistinct(true);
 		
 		if($sort = singleton($this->dataClass)->stat('default_sort')) {
@@ -139,8 +158,9 @@ class DataQuery {
 
 	/**
 	 * Ensure that the query is ready to execute.
-	 *
-	 * @return SQLQuery
+	 * 
+	 * @param array|null $queriedColumns Any columns to filter the query by
+	 * @return SQLSelect The finalised sql query
 	 */
 	public function getFinalisedQuery($queriedColumns = null) {
 		if(!$queriedColumns) $queriedColumns = $this->queriedColumns;
@@ -155,8 +175,8 @@ class DataQuery {
 		// regardless.
 		if($queriedColumns) {
 			$tableClasses = ClassInfo::dataClassesFor($this->dataClass);
-
-			foreach ($query->getWhere() as $where) {
+			
+			foreach ($query->getWhereParameterised($parameters) as $where) {
 				// Check for just the column, in the form '"Column" = ?' and the form '"Table"."Column"' = ?
 				if (preg_match('/^"([^"]+)"/', $where, $matches) ||
 					preg_match('/^"([^"]+)"\."[^"]+"/', $where, $matches)) {
@@ -207,7 +227,7 @@ class DataQuery {
 					if(preg_match('/^"([^"]+)"/', $collision, $matches)) {
 						$collisionBase = $matches[1];
 						$collisionClasses = ClassInfo::subclassesFor($collisionBase);
-						$collisionClasses = array_map(array(DB::getConn(), 'prepStringForDB'), $collisionClasses);
+						$collisionClasses = Convert::raw2sql($collisionClasses, true);
 						$caseClauses[] = "WHEN \"$baseClass\".\"ClassName\" IN ("
 							. implode(", ", $collisionClasses) . ") THEN $collision";
 					} else {
@@ -225,14 +245,19 @@ class DataQuery {
 				// Get the ClassName values to filter to
 				$classNames = ClassInfo::subclassesFor($this->dataClass);
 				if(!$classNames) user_error("DataList::create() Can't find data sub-classes for '$callerClass'");
-				$classNames = array_map(array(DB::getConn(), 'prepStringForDB'), $classNames);
-				$query->addWhere("\"$baseClass\".\"ClassName\" IN (" . implode(",", $classNames) . ")");
+				$classNamesPlaceholders = DB::placeholders($classNames);
+				$query->addWhere(array(
+					"\"$baseClass\".\"ClassName\" IN ($classNamesPlaceholders)" => $classNames
+				));
 			}
 		}
 
 		$query->selectField("\"$baseClass\".\"ID\"", "ID");
-		$query->selectField("CASE WHEN \"$baseClass\".\"ClassName\" IS NOT NULL THEN \"$baseClass\".\"ClassName\""
-			. " ELSE ".DB::getConn()->prepStringForDB($baseClass)." END", "RecordClassName");
+		$query->selectField("
+			CASE WHEN \"$baseClass\".\"ClassName\" IS NOT NULL THEN \"$baseClass\".\"ClassName\"
+			ELSE ".Convert::raw2sql($baseClass, true)." END",
+			"RecordClassName"
+		);
 
 		// TODO: Versioned, Translatable, SiteTreeSubsites, etc, could probably be better implemented as subclasses
 		// of DataQuery
@@ -248,7 +273,7 @@ class DataQuery {
 	/**
 	 * Ensure that if a query has an order by clause, those columns are present in the select.
 	 * 
-	 * @param SQLQuery $query
+	 * @param SQLSelect $query
 	 * @return null
 	 */
 	protected function ensureSelectContainsOrderbyColumns($query, $originalSelect = array()) {
@@ -288,7 +313,7 @@ class DataQuery {
 						// add new columns sort
 						$orderby[$qualCol] = $dir;
 							
-					// To-do: Remove this if block once SQLQuery::$select has been refactored to store getSelect()
+					// To-do: Remove this if block once SQLSelect::$select has been refactored to store getSelect()
 					// format internally; then this check can be part of selectField()
 					$selects = $query->getSelect();
 					if(!isset($selects[$col]) && !in_array($qualCol, $selects)) {
@@ -297,7 +322,7 @@ class DataQuery {
 				} else {
 					$qualCol = '"' . implode('"."', $parts) . '"';
 					
-					// To-do: Remove this if block once SQLQuery::$select has been refactored to store getSelect()
+					// To-do: Remove this if block once SQLSelect::$select has been refactored to store getSelect()
 					// format internally; then this check can be part of selectField()
 					if(!in_array($qualCol, $query->getSelect())) {
 						$query->selectField($qualCol);
@@ -318,9 +343,12 @@ class DataQuery {
 
 	/**
 	 * Return this query's SQL
+	 * 
+	 * @param array $parameters Out variable for parameters required for this query
+	 * @param string The resulting SQL query (may be paramaterised)
 	 */
-	public function sql() {
-		return $this->getFinalisedQuery()->sql();
+	public function sql(&$parameters) {
+		return $this->getFinalisedQuery()->sql($parameters);
 	}
 
 	/**
@@ -335,37 +363,41 @@ class DataQuery {
 	/**
 	 * Return the maximum value of the given field in this DataList
 	 * 
-	 * @param String $field Unquoted database column name (will be escaped automatically)
+	 * @param String $field Unquoted database column name. Will be ANSI quoted
+	 * automatically so must not contain double quotes.
 	 */
 	public function max($field) {
-		return $this->aggregate(sprintf('MAX("%s")', Convert::raw2sql($field)));
+		return $this->aggregate("MAX(\"$field\")");
 	}
 
 	/**
 	 * Return the minimum value of the given field in this DataList
 	 * 
-	 * @param String $field Unquoted database column name (will be escaped automatically)
+	 * @param String $field Unquoted database column name. Will be ANSI quoted
+	 * automatically so must not contain double quotes.
 	 */
 	public function min($field) {
-		return $this->aggregate(sprintf('MIN("%s")', Convert::raw2sql($field)));
+		return $this->aggregate("MIN(\"$field\")");
 	}
 	
 	/**
 	 * Return the average value of the given field in this DataList
 	 * 
-	 * @param String $field Unquoted database column name (will be escaped automatically)
+	 * @param String $field Unquoted database column name. Will be ANSI quoted
+	 * automatically so must not contain double quotes.
 	 */
 	public function avg($field) {
-		return $this->aggregate(sprintf('AVG("%s")', Convert::raw2sql($field)));
+		return $this->aggregate("AVG(\"$field\")");
 	}
 
 	/**
 	 * Return the sum of the values of the given field in this DataList
 	 * 
-	 * @param String $field Unquoted database column name (will be escaped automatically)
+	 * @param String $field Unquoted database column name. Will be ANSI quoted
+	 * automatically so must not contain double quotes.
 	 */
 	public function sum($field) {
-		return $this->aggregate(sprintf('SUM("%s")', Convert::raw2sql($field)));
+		return $this->aggregate("SUM(\"$field\")");
 	}
 	
 	/**
@@ -394,7 +426,7 @@ class DataQuery {
 	/**
 	 * Update the SELECT clause of the query with the columns from the given table
 	 */
-	protected function selectColumnsFromTable(SQLQuery &$query, $tableClass, $columns = null) {
+	protected function selectColumnsFromTable(SQLSelect &$query, $tableClass, $columns = null) {
 		// Add SQL for multi-value fields
 		$databaseFields = DataObject::database_fields($tableClass);
 		$compositeFields = DataObject::composite_fields($tableClass, false);
@@ -453,18 +485,13 @@ class DataQuery {
 	}
 
 	/**
-	 * Set the WHERE clause of this query.
-	 * There are two different ways of doing this:
+	 * Adds a WHERE clause.
+	 * 
+	 * @see SQLSelect::addWhere() for syntax examples, although DataQuery
+	 * won't expand multiple arguments as SQLSelect does.
 	 *
-	 * <code>
-	 *  // the entire predicate as a single string
-	 *  $query->where("\"Column\" = 'Value'");
-	 *
-	 *  // multiple predicates as an array
-	 *  $query->where(array("\"Column\" = 'Value'", "\"Column\" != 'Value'"));
-	 * </code>
-	 *
-	 * @param string|array $where Predicate(s) to set, as escaped SQL statements.
+	 * @param string|array|SQLConditionGroup $filter Predicate(s) to set, as escaped SQL statements or paramaterised queries
+	 * @return DataQuery
 	 */
 	public function where($filter) {
 		if($filter) {
@@ -476,10 +503,10 @@ class DataQuery {
 	/**
 	 * Set a WHERE with OR.
 	 * 
-	 * @example $dataQuery->whereAny(array("\"Monkey\" = 'Chimp'", "\"Color\" = 'Brown'"));
-	 * @see where()
+	 * @see SQLSelect::addWhere() for syntax examples, although DataQuery
+	 * won't expand multiple arguments as SQLSelect does.
 	 *
-	 * @param array $filter Escaped SQL statement.
+	 * @param string|array|SQLConditionGroup $filter Predicate(s) to set, as escaped SQL statements or paramaterised queries
 	 * @return DataQuery
 	 */
 	public function whereAny($filter) {
@@ -492,7 +519,7 @@ class DataQuery {
 	/**
 	 * Set the ORDER BY clause of this query
 	 *
-	 * @see SQLQuery::orderby()
+	 * @see SQLSelect::orderby()
 	 *
 	 * @param String $sort Column to sort on (escaped SQL statement)
 	 * @param String $direction Direction ("ASC" or "DESC", escaped SQL statement)
@@ -652,7 +679,8 @@ class DataQuery {
 		$subSelect->setSelect(array());
 		$subSelect->selectField($fieldExpression, $field);
 		$subSelect->setOrderBy(null);
-		$this->where($this->expressionForField($field).' NOT IN ('.$subSelect->sql().')');
+		$subSelectSQL = $subSelect->sql($subSelectParameters);
+		$this->where(array($this->expressionForField($field)." NOT IN ($subSelectSQL)" => $subSelectParameters));
 
 		return $this;
 	}
@@ -664,9 +692,9 @@ class DataQuery {
 	 * @param Array $fields Database column names (will be escaped automatically)
 	 */
 	public function selectFromTable($table, $fields) {
-		$table = Convert::raw2sql($table);
-		$fieldExpressions = array_map(create_function('$item', 
-			"return '\"$table\".\"' . Convert::raw2sql(\$item) . '\"';"), $fields);
+		$fieldExpressions = array_map(function($item) use($table) {
+			return "\"$table\".\"$item\"";
+		}, $fields);
 		
 		$this->query->setSelect($fieldExpressions);
 
@@ -691,7 +719,7 @@ class DataQuery {
 	
 	/**
 	 * @param  String $field Select statement identifier, either the unquoted column name,
-	 * the full composite SQL statement, or the alias set through {@link SQLQuery->selectField()}.
+	 * the full composite SQL statement, or the alias set through {@link SQLSelect->selectField()}.
 	 * @return String The expression used to query this field via this DataQuery
 	 */
 	protected function expressionForField($field) {
@@ -756,52 +784,29 @@ class DataQuery {
 /**
  * Represents a subgroup inside a WHERE clause in a {@link DataQuery}
  *
- * Stores the clauses for the subgroup inside a specific {@link SQLQuery} object.
+ * Stores the clauses for the subgroup inside a specific {@link SQLSelect} object.
  * All non-where methods call their DataQuery versions, which uses the base
  * query object.
  */
-class DataQuery_SubGroup extends DataQuery {
+class DataQuery_SubGroup extends DataQuery implements SQLConditionGroup {
 	protected $whereQuery;
 
 	public function __construct(DataQuery $base, $connective) {
 		$this->dataClass = $base->dataClass;
 		$this->query = $base->query;
-		$this->whereQuery = new SQLQuery;
+		$this->whereQuery = new SQLSelect();
 		$this->whereQuery->setConnective($connective);
 
 		$base->where($this);
 	}
 
-	/**
-	 * Set the WHERE clause of this query.
-	 * There are two different ways of doing this:
-	 *
-	 * <code>
-	 *  // the entire predicate as a single string
-	 *  $query->where("\"Column\" = 'Value'");
-	 *
-	 *  // multiple predicates as an array
-	 *  $query->where(array("\"Column\" = 'Value'", "\"Column\" != 'Value'"));
-	 * </code>
-	 *
-	 * @param string|array $where Predicate(s) to set, as escaped SQL statements.
-	 */
 	public function where($filter) {
 		if($filter) {
 			$this->whereQuery->addWhere($filter);
 		}
 		return $this;
 	}
-
-	/**
-	 * Set a WHERE with OR.
-	 * 
-	 * @example $dataQuery->whereAny(array("\"Monkey\" = 'Chimp'", "\"Color\" = 'Brown'"));
-	 * @see where()
-	 *
-	 * @param array $filter Escaped SQL statement.
-	 * @return DataQuery
-	 */
+	
 	public function whereAny($filter) {
 		if($filter) {
 			$this->whereQuery->addWhereAny($filter);
@@ -809,13 +814,15 @@ class DataQuery_SubGroup extends DataQuery {
 		return $this;
 	}
 
-	public function __toString() {
-		if(!$this->whereQuery->getWhere()) {
-			// We always need to have something so we don't end up with something like '... AND () AND ...'
-			return '1=1';
-		}
-		$sql = DB::getConn()->sqlWhereToString($this->whereQuery->getWhere(), $this->whereQuery->getConnective());
-		$sql = preg_replace('[^\s*WHERE\s*]', '', $sql);
-		return $sql;
+	public function conditionSQL(&$parameters) {
+		$parameters = array();
+		
+		// Ignore empty conditions
+		$where = $this->whereQuery->getWhere();
+		if(empty($where)) return null;
+		
+		// Allow database to manage joining of conditions
+		$sql = DB::getConn()->getQueryBuilder()->buildWhereFragment($this->whereQuery, $parameters);
+		return preg_replace('/^\s*WHERE\s*/i', '', $sql);
 	}
 }

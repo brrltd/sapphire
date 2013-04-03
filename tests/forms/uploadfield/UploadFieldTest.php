@@ -27,7 +27,9 @@ class UploadFieldTest extends FunctionalTest {
 		);
 		$this->assertFalse($response->isError());
 		$this->assertFileExists(ASSETS_PATH . "/UploadFieldTest/$tmpFileName");
-		$uploadedFile = DataObject::get_one('File', sprintf('"Name" = \'%s\'', $tmpFileName));
+		$uploadedFile = DataObject::get_one('File', array(
+			'"File"."Name"' => $tmpFileName
+		));
 		$this->assertTrue(is_object($uploadedFile), 'The file object is created');
 	}
 
@@ -47,7 +49,9 @@ class UploadFieldTest extends FunctionalTest {
 		);
 		$this->assertFalse($response->isError());
 		$this->assertFileExists(ASSETS_PATH . "/UploadFieldTest/$tmpFileName");
-		$uploadedFile = DataObject::get_one('File', sprintf('"Name" = \'%s\'', $tmpFileName));
+		$uploadedFile = DataObject::get_one('File', array(
+			'"File"."Name"' => $tmpFileName
+		));
 		$this->assertTrue(is_object($uploadedFile), 'The file object is created');
 
 		$record = DataObject::get_by_id($record->class, $record->ID, false);
@@ -72,7 +76,9 @@ class UploadFieldTest extends FunctionalTest {
 		$this->assertFalse($response->isError());
 
 		$this->assertFileExists(ASSETS_PATH . "/UploadFieldTest/$tmpFileName");
-		$uploadedFile = DataObject::get_one('UploadFieldTest_ExtendedFile', sprintf('"Name" = \'%s\'', $tmpFileName));
+		$uploadedFile = DataObject::get_one('UploadFieldTest_ExtendedFile', array(
+			'"File"."Name"' => $tmpFileName
+		));
 		$this->assertTrue(is_object($uploadedFile), 'The file object is created');
 
 		$record = DataObject::get_by_id($record->class, $record->ID, false);
@@ -93,7 +99,9 @@ class UploadFieldTest extends FunctionalTest {
 		);
 		$this->assertFalse($response->isError());
 		$this->assertFileExists(ASSETS_PATH . "/UploadFieldTest/$tmpFileName");
-		$uploadedFile = DataObject::get_one('File', sprintf('"Name" = \'%s\'', $tmpFileName));
+		$uploadedFile = DataObject::get_one('File', array(
+			'"File"."Name"' => $tmpFileName
+		));
 		$this->assertTrue(is_object($uploadedFile), 'The file object is created');
 
 		$record = DataObject::get_by_id($record->class, $record->ID, false);
@@ -115,7 +123,9 @@ class UploadFieldTest extends FunctionalTest {
 		);
 		$this->assertFalse($response->isError());
 		$this->assertFileExists(ASSETS_PATH . "/UploadFieldTest/$tmpFileName");
-		$uploadedFile = DataObject::get_one('File', sprintf('"Name" = \'%s\'', $tmpFileName));
+		$uploadedFile = DataObject::get_one('File', array(
+			'"File"."Name"' => $tmpFileName
+		));
 		$this->assertTrue(is_object($uploadedFile), 'The file object is created');
 
 		$record = DataObject::get_by_id($record->class, $record->ID, false);
@@ -772,7 +782,9 @@ class UploadFieldTest_Controller extends Controller implements TestOnly {
 	protected $template = 'BlankPage';
 
 	public function Form() {
-		$record = DataObject::get_one('UploadFieldTest_Record', '"Title" = \'Record 1\'');
+		$record = DataObject::get_one('UploadFieldTest_Record', array(
+			'"UploadFieldTest_Record"."Title"' => 'Record 1'
+		));
 
 		$fieldNoRelation = new UploadField('NoRelationField');
 		$fieldNoRelation->setFolderName('UploadFieldTest');

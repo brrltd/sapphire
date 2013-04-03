@@ -360,11 +360,10 @@ class Debug {
 		}
 
 		if(!headers_sent()) {
-			$currController = Controller::curr();
 			// Ensure the error message complies with the HTTP 1.1 spec
 			$msg = strip_tags(str_replace(array("\n", "\r"), '', $friendlyErrorMessage));
-			if($currController) {
-				$response = $currController->getResponse();
+			if(Controller::has_curr()) {
+				$response = Controller::curr()->getResponse();
 				$response->setStatusCode($statusCode, $msg);
 			} else {
 				header($_SERVER['SERVER_PROTOCOL'] . " $statusCode $msg");
@@ -495,19 +494,13 @@ class Debug {
 			// This basically calls Permission::checkMember($_SESSION['loggedInAs'], 'ADMIN');
 			
 			$memberID = $_SESSION['loggedInAs'];
-			
-			$groups = DB::query("SELECT \"GroupID\" from \"Group_Members\" WHERE \"MemberID\" = " . $memberID);
-			$groupCSV = implode($groups->column(), ',');
-			
 			$permission = DB::query("
-				SELECT \"ID\"
-				FROM \"Permission\"
-				WHERE (
-					\"Code\" = 'ADMIN'
-					AND \"Type\" = " . Permission::GRANT_PERMISSION . "
-					AND \"GroupID\" IN ($groupCSV)
-				)
-			")->value();
+				SELECT \"ID\" FROM \"Permission\"
+				WHERE \"Code\" = ? 
+				AND \"Type\" = ? 
+				AND \"GroupID\" IN (SELECT \"GroupID\" from \"Group_Members\" WHERE \"MemberID\" = ?)",
+				array('ADMIN', Permission::GRANT_PERMISSION, $memberID)
+			)->value();
 			
 			if($permission) {
 				return;

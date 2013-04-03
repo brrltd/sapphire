@@ -82,7 +82,7 @@ class GridFieldAddExistingAutocompleter
 	 * @return string - HTML
 	 */
 	public function getHTMLFragments($gridField) {
-		$searchState = $gridField->State->GridFieldSearchRelation;
+		$searchState = $gridField->State->get('GridFieldSearchRelation');
 		$dataClass = $gridField->getList()->dataClass();
 		
 		$forTemplate = new ArrayData(array());
@@ -110,7 +110,7 @@ class GridFieldAddExistingAutocompleter
 		$addAction->setAttribute('data-icon', 'chain--plus');
 
 		// If an object is not found, disable the action
-		if(!is_int($gridField->State->GridFieldAddRelation)) {
+		if(!is_int($gridField->State->get('GridFieldAddRelation'))) {
 			$addAction->setReadonly(true);
 		}
 		
@@ -163,15 +163,13 @@ class GridFieldAddExistingAutocompleter
 	 * @return SS_List 
 	 */
 	public function getManipulatedData(GridField $gridField, SS_List $dataList) {
-		if(!$gridField->State->GridFieldAddRelation) {
+		$objectID = $gridField->State->get('GridFieldAddRelation');
+		if(empty($objectID)) {
 			return $dataList;
 		}
-		$objectID = Convert::raw2sql($gridField->State->GridFieldAddRelation);
-		if($objectID) {
-			$object = DataObject::get_by_id($dataList->dataclass(), $objectID);
-			if($object) {
-				$dataList->add($object);
-			}
+		$object = DataObject::get_by_id($dataList->dataclass(), $objectID);
+		if($object) {
+			$dataList->add($object);
 		}
 		$gridField->State->GridFieldAddRelation = null;
 		return $dataList;
@@ -366,6 +364,8 @@ class GridFieldAddExistingAutocompleter
 	 * matching ONE object only. We wouldn't want to attach used any object to
 	 * the list.
 	 * 
+	 * @todo - This function is not used correctly! $field is often given as an array
+	 * 
 	 * @param GridField $gridField
 	 * @param string $field
 	 * @param string $searchTerm
@@ -374,8 +374,7 @@ class GridFieldAddExistingAutocompleter
 	 */
 	protected function findSingleEntry($gridField, $field, $searchTerm, $dataclass) {
 		$fullList = DataList::create($dataclass);
-		$searchTerm = Convert::raw2sql($searchTerm);
-		if(!$searchTerm) {
+		if(empty($searchTerm)) {
 			return;
 		}
 		$existingList = clone $gridField->getList();

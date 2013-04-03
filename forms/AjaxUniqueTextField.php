@@ -51,12 +51,14 @@ class AjaxUniqueTextField extends TextField {
 	}
 
 	public function validate( $validator ) {
-		$result = DB::query(sprintf(
-			"SELECT COUNT(*) FROM \"%s\" WHERE \"%s\" = '%s'",
-			$this->restrictedTable,
-			$this->restrictedField,
-			Convert::raw2sql($this->value)
-		))->value();
+		$result = DB::preparedQuery(
+			sprintf(
+				"SELECT COUNT(*) FROM \"%s\" WHERE \"%s\" = ?",
+				$this->restrictedTable,
+				$this->restrictedField
+			),
+			array($this->value)
+		)->value();
 
 		if( $result && ( $result > 0 ) ) {
 			$validator->validationError($this->name,

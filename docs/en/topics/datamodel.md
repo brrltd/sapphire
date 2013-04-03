@@ -296,7 +296,20 @@ still needs to be written)
 You can specify a WHERE clause fragment (that will be combined with other filters using AND) with the `where()` method:
 
 	:::php
-	$members = Member::get()->where("\"FirstName\" = 'Sam'")
+	$members = Member::get()->where(array('"FirstName" = ?' => 'Sam'));
+
+Using the parameterised query syntax you can either provide a single variable as a parameter, an array of parameters
+if the SQL has multiple value placeholders, or simply pass an indexed array of strings for literal SQL.
+
+For simple field value comparison the ' = ?' can be omitted for simplicity, but the column name must still
+be double quoted.
+
+	:::php
+	$members = Member::get()->where(array(
+		'"FirstName"' => 'Sam', // Simple comparison condition
+		'"Score" = GREATEST(?,?)' => array(50, 56), // Multiple parameters for condition
+		'"Birthday" IS NOT NULL' // Literal SQL condition
+	));
 
 #### Joining 
 

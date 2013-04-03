@@ -109,7 +109,23 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 	 * @var array
 	 */
 	protected $record;
-
+	
+	/**
+	 * Represents a field that hasn't changed
+	 */
+	const CHANGE_NONE = 0;
+	
+	/**
+	 * Represents a field that has strictly changed type or value. E.g.
+	 * change 1 to true, or false to true
+	 */
+	const CHANGE_STRICT = 1;
+	
+	/**
+	 * Represents a field that has changed value. E.g. change false to true
+	 */
+	const CHANGE_VALUE = 2;
+	
 	/**
 	 * An array indexed by fieldname, true if the field has been changed.
 	 * Use {@link getChangedFields()} and {@link isChanged()} to inspect
@@ -205,10 +221,11 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 			if(!isset(self::$classname_spec_cache[$class])) {
 				$classNames = ClassInfo::subclassesFor($class);
 
-				$db = DB::getConn();
-				if($db->hasField($class, 'ClassName')) {
-					$existing = $db->query("SELECT DISTINCT \"ClassName\" FROM \"$class\"")->column();
-					$classNames = array_unique(array_merge($existing, $classNames));
+				if(DB::getSchema()->hasField($class, 'ClassName')) {
+					$existing = DB::query("SELECT DISTINCT \"ClassName\" FROM \"$class\"")->column();
+					// Maintain natural order (i.e. that returned by ClassInfo::subclasessFor)
+					// in order to prevent subsequent database updates rearranging this list
+					$classNames = array_unique(array_merge($classNames, $existing));
 				}
 
 				self::$classname_spec_cache[$class] = "Enum('" . implode(', ', $classNames) . "')";
@@ -926,7 +943,7 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 			array_keys($this->inheritedDatabaseFields())));
 		
 		foreach($fieldNames as $fieldName) {
-			if(!isset($this->changed[$fieldName])) $this->changed[$fieldName] = 1;
+			if(!isset($this->changed[$fieldName])) $this->changed[$fieldName] = self::CHANGE_STRICT;
 			// Populate the null values in record so that they actually get written
 			if(!isset($this->record[$fieldName])) $this->record[$fieldName] = null;
 		}
@@ -1062,11 +1079,9 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 	 * @throws ValidationException Exception that can be caught and handled by the calling function
 	 */
 	public function write($showDebug = false, $forceInsert = false, $forceWrite = false, $writeComponents = false) {
-		$firstWrite = false;
 		$this->brokenOnWrite = true;
-		$isNewRecord = false;
-
 		$writeException = null;
+		$now = SS_Datetime::now()->Rfc2822();
 
 		if ($this->ObsoleteClassName) {
 			$writeException = new ValidationException(
@@ -1099,157 +1114,141 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 				. " Make sure that you call parent::onBeforeWrite().", E_USER_ERROR);
 		}
 
-		// New record = everything has changed
-
-		if(($this->ID && is_numeric($this->ID)) && !$forceInsert) {
-			$dbCommand = 'update';
-
+		// Check if we are doing an update or an insert
+		if($this->ID && is_numeric($this->ID) && !$forceInsert) {
+			$isNewRecord = false;
+			
 			// Update the changed array with references to changed obj-fields
 			foreach($this->record as $k => $v) {
 				if(is_object($v) && method_exists($v, 'isChanged') && $v->isChanged()) {
-					$this->changed[$k] = true;
+					$this->changed[$k] = self::CHANGE_VALUE;
 				}
-			}
-
-		} else{
-			$dbCommand = 'insert';
-
-			$this->changed = array();
-			foreach($this->record as $k => $v) {
-				$this->changed[$k] = 2;
 			}
 			
-			$firstWrite = true;
+		} else{
+			$isNewRecord = true;
+			
+			// Reset all fields to changed
+			$this->changed = array();
+			foreach($this->record as $k => $v) {
+				$this->changed[$k] = self::CHANGE_VALUE;
+			}
 		}
 
-		// No changes made
-		if($this->changed) {
+		// Look for some changes to make
+		if(!$forceInsert) unset($this->changed['ID']);
+
+		// Check changes exist, abort if there are no changes
+		$hasChanges = $this->changed && (bool)array_filter($this->changed);
+		if($hasChanges || $forceWrite || $isNewRecord) {
+			
+			// Build ancestry tree
+			$ancestry = array();
 			foreach($this->getClassAncestry() as $ancestor) {
-				if(self::has_own_table($ancestor))
-				$ancestry[] = $ancestor;
+				if(self::has_own_table($ancestor)) $ancestry[] = $ancestor;
 			}
 
-			// Look for some changes to make
-			if(!$forceInsert) unset($this->changed['ID']);
+			// New records have their insert into the base data table done first, so that they can pass the
+			// generated primary key on to the rest of the manipulation
+			$baseTable = $ancestry[0];
 
-			$hasChanges = false;
-			foreach($this->changed as $fieldName => $changed) {
-				if($changed) {
-					$hasChanges = true;
-					break;
-				}
+            // Generate new ID if not specified
+			if($isNewRecord && empty($this->record['ID'])) {
+				$insert = new SQLInsert("\"$baseTable\"");
+				$insert
+					->assignSQL('"Created"', DB::getConn()->now())
+					->execute();
+				$this->record['ID'] = DB::getGeneratedID($baseTable);
+				$this->changed['ID'] = self::CHANGE_VALUE;
 			}
 
-			if($hasChanges || $forceWrite || !$this->record['ID']) {
-					
-				// New records have their insert into the base data table done first, so that they can pass the
-				// generated primary key on to the rest of the manipulation
-				$baseTable = $ancestry[0];
-				
-				if((!isset($this->record['ID']) || !$this->record['ID']) && isset($ancestry[0])) {	
+			// Divvy up field saving into a number of database manipulations
+			$manipulation = array();
+			foreach($ancestry as $class) {
+				$manipulation[$class] = array();
 
-					DB::query("INSERT INTO \"{$baseTable}\" (\"Created\") VALUES (" . DB::getConn()->now() . ")");
-					$this->record['ID'] = DB::getGeneratedID($baseTable);
-					$this->changed['ID'] = 2;
+				// Extract records for this table
+				$classSingleton = singleton($class);
+				foreach($this->record as $fieldName => $fieldValue) {
 
-					$isNewRecord = true;
+					// Check if this record pertains to this table, and
+					// we're not attempting to reset the BaseTable->ID
+					$fieldType = $classSingleton->hasOwnTableDatabaseField($fieldName);
+					if(	empty($this->changed[$fieldName]) 
+						|| !$fieldType
+						|| ($class === $baseTable && $fieldName === 'ID')
+					) {
+						continue;
+					}
+
+					// if database column doesn't correlate to a DBField instance...
+					$fieldObj = $this->dbObject($fieldName);
+					if(!$fieldObj) {
+						$fieldObj = DBField::create_field('Varchar', $fieldValue, $fieldName);
+					}
+
+					// Ensure DBField is repopulated and written to the manipulation
+					$fieldObj->setValue($fieldValue, $this->record);
+					$fieldObj->writeToManipulation($manipulation[$class]);
 				}
 
-				// Divvy up field saving into a number of database manipulations
-				$manipulation = array();
-				if(isset($ancestry) && is_array($ancestry)) {
-					foreach($ancestry as $idx => $class) {
-						$classSingleton = singleton($class);
-						
-						foreach($this->record as $fieldName => $fieldValue) {
-							if(isset($this->changed[$fieldName]) && $this->changed[$fieldName] 
-									&& $fieldType = $classSingleton->hasOwnTableDatabaseField($fieldName)) {
-
-								$fieldObj = $this->dbObject($fieldName);
-								if(!isset($manipulation[$class])) $manipulation[$class] = array();
-
-								// if database column doesn't correlate to a DBField instance...
-								if(!$fieldObj) {
-									$fieldObj = DBField::create_field('Varchar', $this->record[$fieldName], $fieldName);
-								}
-
-								// Both CompositeDBFields and regular fields need to be repopulated
-								$fieldObj->setValue($this->record[$fieldName], $this->record);
-
-								if($class != $baseTable || $fieldName!='ID')
-									$fieldObj->writeToManipulation($manipulation[$class]);
-							}
-						}
-
-						// Add the class name to the base object
-						if($idx == 0) {
-							$manipulation[$class]['fields']["LastEdited"] = "'".SS_Datetime::now()->Rfc2822()."'";
-							if($dbCommand == 'insert') {
-								if(!empty($this->record["Created"])) {
-									$manipulation[$class]['fields']["Created"]
-										= DB::getConn()->prepStringForDB($this->record["Created"]);
-								} else {
-									$manipulation[$class]['fields']["Created"]
-										= DB::getConn()->prepStringForDB(SS_Datetime::now()->Rfc2822());
-								}
-								//echo "<li>$this->class - " .get_class($this);
-								$manipulation[$class]['fields']["ClassName"]
-									= DB::getConn()->prepStringForDB($this->class);
-							}
-						}
-
-						// In cases where there are no fields, this 'stub' will get picked up on
-						if(self::has_own_table($class)) {
-							$manipulation[$class]['command'] = $dbCommand;
-							$manipulation[$class]['id'] = $this->record['ID'];
-						} else {
-							unset($manipulation[$class]);
-						}
+				// Ensure update of Created and LastEdited columns
+				if($class == $baseTable) {
+					$manipulation[$class]['fields']['LastEdited'] = $now;
+					if($isNewRecord) {
+						$manipulation[$class]['fields']['Created']
+							= empty($this->record['Created']) 
+								? $now
+								: $this->record['Created'];
+						$manipulation[$class]['fields']['ClassName'] = $this->class;
 					}
 				}
-				$this->extend('augmentWrite', $manipulation);
-				
-				// New records have their insert into the base data table done first, so that they can pass the
-				// generated ID on to the rest of the manipulation
-				if(isset($isNewRecord) && $isNewRecord && isset($manipulation[$baseTable])) {
-					$manipulation[$baseTable]['command'] = 'update';
-				}
-				
-				DB::manipulate($manipulation);
 
-				// If there's any relations that couldn't be saved before, save them now (we have an ID here)
-				if($this->unsavedRelations) {
-					foreach($this->unsavedRelations as $name => $list) {
-						$list->changeToList($this->$name());
-					}
-					$this->unsavedRelations = array();
-				}
-
-				$this->onAfterWrite();
-
-				$this->changed = null;
-			} elseif ( $showDebug ) {
-				echo "<b>Debug:</b> no changes for DataObject<br />";
-				// Used by DODs to clean up after themselves, eg, Versioned
-				$this->invokeWithExtensions('onAfterSkippedWrite');
+				// Additional parameters for manipulation
+				$manipulation[$class]['command'] = $isNewRecord ? 'insert' : 'update';
+				$manipulation[$class]['id'] = $this->record['ID'];
 			}
 
-			// Clears the cache for this object so get_one returns the correct object.
-			$this->flushCache();
+			// Allow extensions to extend this manipulation
+			$this->extend('augmentWrite', $manipulation);
 
-			if(!isset($this->record['Created'])) {
-				$this->record['Created'] = SS_Datetime::now()->Rfc2822();
+			// New records have their insert into the base data table done first, so that they can pass the
+			// generated ID on to the rest of the manipulation
+			if($isNewRecord) {
+				$manipulation[$baseTable]['command'] = 'update';
 			}
-			$this->record['LastEdited'] = SS_Datetime::now()->Rfc2822();
+
+			DB::manipulate($manipulation);
+
+			// If there's any relations that couldn't be saved before, save them now (we have an ID here)
+			if($this->unsavedRelations) {
+				foreach($this->unsavedRelations as $name => $list) {
+					$list->changeToList($this->$name());
+				}
+				$this->unsavedRelations = array();
+			}
+
+			$this->onAfterWrite();
+
+			$this->changed = array();
 		} else {
+			if($showDebug) echo "<b>Debug:</b> no changes for DataObject<br />";
+			
 			// Used by DODs to clean up after themselves, eg, Versioned
 			$this->invokeWithExtensions('onAfterSkippedWrite');
 		}
 
-		// Write relations as necessary
-		if($writeComponents) {
-			$this->writeComponents(true);
+		if(!isset($this->record['Created'])) {
+			$this->record['Created'] = $now;
 		}
+		$this->record['LastEdited'] = $now;
+
+		// Write relations as necessary
+		if($writeComponents) $this->writeComponents(true);
+
+		// Clears the cache for this object so get_one returns the correct object.
+		$this->flushCache();
+		
 		return $this->record['ID'];
 	}
 
@@ -1292,10 +1291,8 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 		//    obviously, that means getting requireTable() to configure cascading deletes ;-)
 		$srcQuery = DataList::create($this->class, $this->model)->where("ID = $this->ID")->dataQuery()->query();
 		foreach($srcQuery->queriedTables() as $table) {
-			$query = new SQLQuery("*", array('"' . $table . '"'));
-			$query->setWhere("\"ID\" = $this->ID");
-			$query->setDelete(true);
-			$query->execute();
+			$delete = new SQLDelete("\"$table\"", array('"ID"' => $this->ID));
+			$delete->execute();
 		}
 		// Remove this item out of any caches
 		$this->flushCache();
@@ -1368,7 +1365,9 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 			$joinID    = $this->ID;
 			
 			if($joinID) {
-				$component = DataObject::get_one($class, "\"$joinField\" = $joinID");
+				$component = DataObject::get_one($class, array(
+					"\"$joinField\"" => $joinID
+				));
 			}
 			
 			if(!isset($component) || !$component) {
@@ -1437,7 +1436,7 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 	 * @param string|array $sort
 	 * @param string $join Deprecated, use leftJoin($table, $joinClause) instead
 	 * @param string|array $limit
-	 * @return SQLQuery
+	 * @return SQLSelect
 	 */
 	public function getComponentsQuery($componentName, $filter = "", $sort = "", $join = "", $limit = "") {
 		if(!$componentClass = $this->has_many($componentName)) {
@@ -2193,7 +2192,7 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 		// Update the changed array with references to changed obj-fields
 		foreach($this->record as $k => $v) {
 			if(is_object($v) && method_exists($v, 'isChanged') && $v->isChanged()) {
-				$this->changed[$k] = 2;
+				$this->changed[$k] = self::CHANGE_VALUE;
 			}
 		}
 		
@@ -2272,19 +2271,18 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 				user_error('DataObject::setField: passed an object that is not a DBField', E_USER_WARNING);
 			}
 		
-			$defaults = $this->stat('defaults');
 			// if a field is not existing or has strictly changed
 			if(!isset($this->record[$fieldName]) || $this->record[$fieldName] !== $val) {
 				// TODO Add check for php-level defaults which are not set in the db
 				// TODO Add check for hidden input-fields (readonly) which are not set in the db
 				// At the very least, the type has changed
-				$this->changed[$fieldName] = 1;
+				$this->changed[$fieldName] = self::CHANGE_STRICT;
 				
 				if((!isset($this->record[$fieldName]) && $val) || (isset($this->record[$fieldName])
 						&& $this->record[$fieldName] != $val)) {
 
 					// Value has changed as well, not just the type
-					$this->changed[$fieldName] = 2;
+					$this->changed[$fieldName] = self::CHANGE_VALUE;
 				}
 
 				// If we've just lazy-loaded the column, then we need to populate the $original array by
@@ -2471,7 +2469,7 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 					$groupList = implode(', ', $groups->column("ID"));
 
 					// TODO Fix relation table hardcoding
-					$query = new SQLQuery(
+					$query = new SQLSelect(
 						"\"Page_Can$perm\".PageID",
 					array("\"Page_Can$perm\""),
 						"GroupID IN ($groupList)");
@@ -2480,7 +2478,7 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 
 					if($perm == "View") {
 						// TODO Fix relation table hardcoding
-						$query = new SQLQuery("\"SiteTree\".\"ID\"", array(
+						$query = new SQLSelect("\"SiteTree\".\"ID\"", array(
 							"\"SiteTree\"",
 							"LEFT JOIN \"Page_CanView\" ON \"Page_CanView\".\"PageID\" = \"SiteTree\".\"ID\""
 							), "\"Page_CanView\".\"PageID\" IS NULL");
@@ -2732,16 +2730,19 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 	/**
 	 * Return all objects matching the filter
 	 * sub-classes are automatically selected and included
-	 *
+	 * 
 	 * @param string $callerClass The class of objects to be returned
-	 * @param string $filter A filter to be inserted into the WHERE clause.
-	 * @param string|array $sort A sort expression to be inserted into the ORDER BY clause.  If omitted,
-	 *                           self::$default_sort will be used.
+	 * @param string|array $filter A filter to be inserted into the WHERE clause.
+	 * Supports parameterised queries. See SQLSelect::addWhere() for syntax examples.
+	 * @param string|array $sort A sort expression to be inserted into the ORDER
+	 * BY clause.  If omitted, self::$default_sort will be used.
 	 * @param string $join Deprecated 3.0 Join clause. Use leftJoin($table, $joinClause) instead.
 	 * @param string|array $limit A limit expression to be inserted into the LIMIT clause.
 	 * @param string $containerClass The container class to return the results in.
+	 * 
+	 * @todo $containerClass is Ignored, why?
 	 *
-	 * @return mixed The objects matching the filter, in the class specified by $containerClass
+	 * @return DataList The objects matching the filter, in the class specified by $containerClass
 	 */
 	public static function get($callerClass = null, $filter = "", $sort = "", $join = "", $limit = null,
 			$containerClass = 'DataList') {
@@ -2816,7 +2817,8 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 	 * All calls to get_one() are cached.
 	 *
 	 * @param string $callerClass The class of objects to be returned
-	 * @param string $filter A filter to be inserted into the WHERE clause
+	 * @param string|array $filter A filter to be inserted into the WHERE clause.
+	 * Supports parameterised queries. See SQLSelect::addWhere() for syntax examples.
 	 * @param boolean $cache Use caching
 	 * @param string $orderby A sort expression to be inserted into the ORDER BY clause.
 	 *
@@ -2825,7 +2827,7 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 	public static function get_one($callerClass, $filter = "", $cache = true, $orderby = "") {
 		$SNG = singleton($callerClass);
 
-		$cacheKey = "{$filter}-{$orderby}";
+		$cacheKey = var_export($filter, true)."-{$orderby}";
 		if($extra = $SNG->extend('cacheKeyComponent')) {
 			$cacheKey .= '-' . implode("-", $extra);
 		}
@@ -2839,7 +2841,7 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 			DataObject::$_cache_get_one[$callerClass][$cacheKey] = false;
 		}
 		if(!$cache || !isset(DataObject::$_cache_get_one[$callerClass][$cacheKey])) {
-			$dl = $callerClass::get()->where($filter)->sort($orderby);
+			$dl = DataObject::get($callerClass)->where($filter)->sort($orderby);
 			$item = $dl->First();
 
 			if($cache) {
@@ -2915,18 +2917,21 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 	 * @return DataObject The element
 	 */
 	public static function get_by_id($callerClass, $id, $cache = true) {
-		if(is_numeric($id)) {
-			if(is_subclass_of($callerClass, 'DataObject')) {
-				$baseClass = ClassInfo::baseDataClass($callerClass);
-				return DataObject::get_one($callerClass,"\"$baseClass\".\"ID\" = $id", $cache);
-
-				// This simpler code will be used by non-DataObject classes that implement DataObjectInterface
-			} else {
-				return DataObject::get_one($callerClass,"\"ID\" = $id", $cache);
-			}
-		} else {
+		if(!is_numeric($id)) {
 			user_error("DataObject::get_by_id passed a non-numeric ID #$id", E_USER_WARNING);
 		}
+		
+		// Check filter column
+		if(is_subclass_of($callerClass, 'DataObject')) {
+			$baseClass = ClassInfo::baseDataClass($callerClass);
+			$column = "\"$baseClass\".\"ID\"";
+		} else{
+			// This simpler code will be used by non-DataObject classes that implement DataObjectInterface
+			$column = '"ID"';
+		}
+		
+		// Relegate to get_one
+		return DataObject::get_one($callerClass, array($column => $id), $cache);
 	}
 
 	/**

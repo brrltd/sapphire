@@ -10,7 +10,7 @@
  */
 class DatabaseAdapterRegistry {
 	
-	private static $default_fields = array(
+	public static $default_fields = array(
 		'server' => array(
 			'title' => 'Database server', 
 			'envVar' => 'SS_DATABASE_SERVER', 

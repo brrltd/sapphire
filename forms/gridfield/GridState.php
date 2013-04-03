@@ -53,6 +53,10 @@ class GridState extends HiddenField {
 		parent::setValue($value);
 	}
 	
+	/**
+	 * 
+	 * @return GridState_Data
+	 */
 	public function getData() {
 		if(!$this->gridStateData) $this->gridStateData = new GridState_Data;
 		return $this->gridStateData;
@@ -110,17 +114,35 @@ class GridState_Data {
 	}
 	
 	public function __get($name) {
-		if(!isset($this->data[$name])) $this->data[$name] = new GridState_Data;
-		if(is_array($this->data[$name])) $this->data[$name] = new GridState_Data($this->data[$name]);
+		return $this->get($name, true);
+	}
+	
+	/**
+	 * Retrieve the value for the given key, optionally creating a nested substate if necessary
+	 * 
+	 * @param string $name The name of the value to retrieve
+	 * @param boolean $createSubstate Flag indicating whether or not to create 
+	 * a nested GridState_Data if no value is set. Defaults to false.
+	 * @return mixed|GridState_Data The value of the key, or GridState_Data if 
+	 * $createSubstate is true. If $createSubstate is false this may still 
+	 * return a GridState_Data for this key if previously created
+	 */
+	public function get($name, $createSubstate = false) {
+		if(!isset($this->data[$name])) {
+			$this->data[$name] = $createSubstate ? (new GridState_Data()) : null;
+		} elseif(is_array($this->data[$name]) && $createSubstate) {
+			$this->data[$name] = new GridState_Data($this->data[$name]);
+		}
 		return $this->data[$name];
 	}
+	
 	public function __set($name, $value) {
 		$this->data[$name] = $value;
 	}
 	public function __isset($name) {
 		return isset($this->data[$name]);
 	}
-
+	
 	public function __toString() {
 		if(!$this->data) return "";
 		else return json_encode($this->toArray());

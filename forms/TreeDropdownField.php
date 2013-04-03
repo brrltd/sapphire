@@ -226,7 +226,7 @@ class TreeDropdownField extends FormField {
 		// Regular source specification
 		$isSubTree = false;
 
-		$this->search = Convert::Raw2SQL($request->requestVar('search'));
+		$this->search = $request->requestVar('search');
 		$ID = (is_numeric($request->latestparam('ID')))
 			? (int)$request->latestparam('ID')
 			: (int)$request->requestVar('ID');
@@ -385,11 +385,12 @@ class TreeDropdownField extends FormField {
 	 */
 	protected function populateIDs() {
 		// get all the leaves to be displayed
-		if ( $this->searchCallback )
+		if ($this->searchCallback)
 			$res = call_user_func($this->searchCallback, $this->sourceObject, $this->labelField, $this->search);
 		else
-			$res = DataObject::get($this->sourceObject, "\"$this->labelField\" LIKE '%$this->search%'");
-		
+			$res = DataObject::get($this->sourceObject)->where(array(
+					"\"$this->labelField\" LIKE ?" => "%{$this->search}%"
+				));
 		if( $res ) {
 			// iteratively fetch the parents in bulk, until all the leaves can be accessed using the tree control
 			foreach($res as $row) {
@@ -397,8 +398,11 @@ class TreeDropdownField extends FormField {
 				$this->searchIds[$row->ID] = true;
 			}
 			while (!empty($parents)) {
-				$res = DB::query('SELECT "ParentID", "ID" FROM "' . $this->sourceObject
-					. '" WHERE "ID" in ('.implode(',',array_keys($parents)).')');
+				$idsClause = DB::placeholders($parents);
+				$res = DB::preparedQuery(
+					"SELECT \"ParentID\", \"ID\" FROM \"{$this->sourceObject}\" WHERE \"ID\" in ($idsClause)",
+					array_keys($parents)
+				);
 				$parents = array();
 
 				foreach($res as $row) {
@@ -420,7 +424,9 @@ class TreeDropdownField extends FormField {
 		if($this->keyField == 'ID') {
 			return DataObject::get_by_id($this->sourceObject, $key);
 		} else {
-			return DataObject::get_one($this->sourceObject, "\"{$this->keyField}\" = '".Convert::raw2sql($key)."'");
+			return DataObject::get_one($this->sourceObject, array(
+				"\"{$this->keyField}\"" => $key
+			));
 		}
 	}
 

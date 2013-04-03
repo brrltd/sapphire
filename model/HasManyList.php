@@ -25,18 +25,18 @@ class HasManyList extends RelationList {
 		if ($id === null) $id = $this->getForeignID();
 
 		// Apply relation filter
+		$key = "\"$this->foreignKey\"";
 		if(is_array($id)) {
-			return "\"$this->foreignKey\" IN ('" .
-				implode("', '", array_map('Convert::raw2sql', $id)) . "')";
+			return array("$key IN (".DB::placeholders($id).")"  => $id);
 		} else if($id !== null){
-			return "\"$this->foreignKey\" = '" . 
-				Convert::raw2sql($id) . "'";
+			return array($key => $id);
 		}
 	}
 
 	/**
 	 * Adds the item to this relation.
 	 * It does so by setting the relationFilters.
+	 * 
 	 * @param $item The DataObject to be added, or its ID 
 	 */
 	public function add($item) {
@@ -58,8 +58,8 @@ class HasManyList extends RelationList {
 			return;
 		}
 
-		$fk = $this->foreignKey;
-		$item->$fk = $foreignID;
+		$foreignKey = $this->foreignKey;
+		$item->$foreignKey = $foreignID;
 
 		$item->write();
 	}
@@ -67,6 +67,7 @@ class HasManyList extends RelationList {
 	/**
 	 * Remove an item from this relation.
 	 * Doesn't actually remove the item, it just clears the foreign key value.
+	 * 
 	 * @param $itemID The ID of the item to be removed
 	 */
 	public function removeByID($itemID) {
@@ -77,8 +78,9 @@ class HasManyList extends RelationList {
 	/**
 	 * Remove an item from this relation.
 	 * Doesn't actually remove the item, it just clears the foreign key value.
+	 * @todo Maybe we should delete the object instead?
+	 * 
 	 * @param $item The DataObject to be removed
-	 * @todo Maybe we should delete the object instead? 
 	 */
 	public function remove($item) {
 		if(!($item instanceof $this->dataClass)) {

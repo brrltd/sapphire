@@ -88,13 +88,10 @@ class PasswordValidator extends Object {
 		}
 		
 		if($this->historicalPasswordCount) {
-			$previousPasswords = DataObject::get(
-				"MemberPassword",
-				"\"MemberID\" = $member->ID",
-				"\"Created\" DESC, \"ID\" Desc",
-				"",
-				$this->historicalPasswordCount
-			);
+			$previousPasswords = MemberPassword::get()
+				->where(array('"MemberPassword"."MemberID"' => $member->ID))
+				->sort('"Created" DESC, "ID" Desc')
+				->limit($this->historicalPasswordCount);
 			if($previousPasswords) foreach($previousPasswords as $previousPasswords) {
 				if($previousPasswords->checkPassword($password)) {
 					$valid->error(

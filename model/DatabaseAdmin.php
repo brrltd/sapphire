@@ -159,7 +159,7 @@ class DatabaseAdmin extends Controller {
 			// Assumes database class is like "MySQLDatabase" or "MSSQLDatabase" (suffixed with "Database")
 			$dbType = substr(get_class($conn), 0, -8);
 			$dbVersion = $conn->getVersion();
-			$databaseName = (method_exists($conn, 'currentDatabase')) ? $conn->currentDatabase() : "";
+			$databaseName = (method_exists($conn, 'currentDatabase')) ? $conn->getSelectedDatabase() : "";
 			
 			if(Director::is_cli()) {
 				echo sprintf("\n\nBuilding database %s using %s %s\n\n", $databaseName, $dbType, $dbVersion);
@@ -173,19 +173,24 @@ class DatabaseAdmin extends Controller {
 			if(!$quiet) {
 				echo '<p><b>Creating database</b></p>';
 			}
+			
+			// Load parameters from existing configuration
 			global $databaseConfig;
-			$parameters = $databaseConfig ? $databaseConfig : $_REQUEST['db'];
-			$connect = DB::getConnect($parameters);
-			$username = $parameters['username'];
-			$password = $parameters['password'];
-			$database = $parameters['database'];
-
-			if(!$database) {
-				user_error("No database name given; please give a value for \$databaseConfig['database']",
-					E_USER_ERROR);
+			if(empty($databaseConfig) && empty($_REQUEST['db'])) {
+				user_error("No database configuration available", E_USER_ERROR);
 			}
-
-			DB::createDatabase($connect, $username, $password, $database);
+			$parameters = (!empty($databaseConfig)) ? $databaseConfig : $_REQUEST['db'];
+			
+			// Check database name is given
+			if(empty($parameters['database'])) {
+				user_error("No database name given; please give a value for \$databaseConfig['database']", E_USER_ERROR);
+			}
+			$database = $parameters['database'];
+			
+			// Establish connection and create database in two steps
+			unset($parameters['database']);
+			DB::connect($parameters);
+			DB::createDatabase($database);
 		}
 
 		// Build the database.  Most of the hard work is handled by DataObject
@@ -197,22 +202,27 @@ class DatabaseAdmin extends Controller {
 			else echo "\n<p><b>Creating database tables</b></p>\n\n";
 		}
 
-		$conn = DB::getConn();
-		$conn->beginSchemaUpdate();
-		foreach($dataClasses as $dataClass) {
-			// Check if class exists before trying to instantiate - this sidesteps any manifest weirdness
-			if(class_exists($dataClass)) {
+		// Initiate schema update
+		$dbSchema = DB::getConn()->getSchemaManager();
+		$dbSchema->schemaUpdate(function() use($dataClasses, $testMode, $quiet){
+			foreach($dataClasses as $dataClass) {
+				// Check if class exists before trying to instantiate - this sidesteps any manifest weirdness
+				if(!class_exists($dataClass)) break;
+				
+				// Check if this class should be excluded as per testing conventions
 				$SNG = singleton($dataClass);
-				if($testMode || !($SNG instanceof TestOnly)) {
-					if(!$quiet) {
-						if(Director::is_cli()) echo " * $dataClass\n";
-						else echo "<li>$dataClass</li>\n";
-					}
-					$SNG->requireTable();
+				if(!$testMode && $SNG instanceof TestOnly) break;
+				
+				// Log data
+				if(!$quiet) {
+					if(Director::is_cli()) echo " * $dataClass\n";
+					else echo "<li>$dataClass</li>\n";
 				}
+				
+				// Instruct the class to apply its schema to the database
+				$SNG->requireTable();
 			}
-		}
-		$conn->endSchemaUpdate();
+		});
 		ClassInfo::reset_db_cache();
 
 		if($populate) {
@@ -235,8 +245,7 @@ class DatabaseAdmin extends Controller {
 			}
 		}
 
-		touch(TEMP_FOLDER . '/database-last-generated-' .
-					str_replace(array('\\', '/', ':'), '.', Director::baseFolder()));
+		touch(TEMP_FOLDER . '/database-last-generated-' . str_replace(array('\\', '/', ':'), '.', Director::baseFolder()));
 
 		if(isset($_REQUEST['from_installer'])) {
 			echo "OK";
@@ -251,14 +260,11 @@ class DatabaseAdmin extends Controller {
 	
 	/**
 	 * Clear all data out of the database
-	 * @todo Move this code into SS_Database class, for DB abstraction
+	 * @deprecated since version 3.1
 	 */
 	public function clearAllData() {
-		$tables = DB::getConn()->tableList();
-		foreach($tables as $table) {
-			if(method_exists(DB::getConn(), 'clearTable')) DB::getConn()->clearTable($table);
-			else DB::query("TRUNCATE \"$table\"");
-		}
+		Deprecation::notice('3.1', 'Use DB::getConn()->clearAllData() instead');
+		DB::getConn()->clearAllData();
 	}
 
 	/**
