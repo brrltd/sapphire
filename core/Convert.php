@@ -132,15 +132,15 @@ class Convert {
 			return $val;
 		} else {
 			if($quoted) {
-				return DB::getConn()->quoteString($val);
+				return DB::get_conn()->quoteString($val);
 			} else {
-				return DB::getConn()->escapeString($val);
+				return DB::get_conn()->escapeString($val);
 			}
 		}
 	}
 	
 	/**
-	 * Safely encodes a SQL identifier (or list of identifiers), such as a database,
+	 * Safely encodes a SQL symbolic identifier (or list of identifiers), such as a database,
 	 * table, or column name. Supports encoding of multi identfiers separated by
 	 * a delimiter (e.g. ".")
 	 * 
@@ -148,14 +148,14 @@ class Convert {
 	 * @param string $separator The string that delimits subsequent identifiers
 	 * @return string|array The escaped identifier. E.g. '"SiteTree"."Title"'
 	 */
-	public static function id2sql($identifier, $separator = '.') {
+	public static function symbol2sql($identifier, $separator = '.') {
 		if(is_array($identifier)) {
 			foreach($identifier as $k => $v) {
-				$identifier[$k] = self::id2sql($v, $separator);
+				$identifier[$k] = self::symbol2sql($v, $separator);
 			}
 			return $identifier;
 		} else {
-			return DB::getConn()->escapeIdentifier($identifier, $separator);
+			return DB::get_conn()->escapeIdentifier($identifier, $separator);
 		}
 	}
 

@@ -221,7 +221,7 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 			if(!isset(self::$classname_spec_cache[$class])) {
 				$classNames = ClassInfo::subclassesFor($class);
 
-				if(DB::getSchema()->hasField($class, 'ClassName')) {
+				if(DB::get_schema()->hasField($class, 'ClassName')) {
 					$existing = DB::query("SELECT DISTINCT \"ClassName\" FROM \"$class\"")->column();
 					// Maintain natural order (i.e. that returned by ClassInfo::subclasessFor)
 					// in order to prevent subsequent database updates rearranging this list
@@ -1152,13 +1152,13 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 			// generated primary key on to the rest of the manipulation
 			$baseTable = $ancestry[0];
 
-            // Generate new ID if not specified
+			// Generate new ID if not specified
 			if($isNewRecord && empty($this->record['ID'])) {
 				$insert = new SQLInsert("\"$baseTable\"");
 				$insert
-					->assignSQL('"Created"', DB::getConn()->now())
+					->assignSQL('"Created"', DB::get_conn()->now())
 					->execute();
-				$this->record['ID'] = DB::getGeneratedID($baseTable);
+				$this->record['ID'] = DB::get_generated_id($baseTable);
 				$this->changed['ID'] = self::CHANGE_VALUE;
 			}
 
@@ -3029,10 +3029,10 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 
 		if($fields) {
 			$hasAutoIncPK = ($this->class == ClassInfo::baseDataClass($this->class));
-			DB::requireTable($this->class, $fields, $indexes, $hasAutoIncPK, $this->stat('create_table_options'),
+			DB::require_table($this->class, $fields, $indexes, $hasAutoIncPK, $this->stat('create_table_options'),
 				$extensions);
 		} else {
-			DB::dontRequireTable($this->class);
+			DB::dont_require_table($this->class);
 		}
 
 		// Build any child tables for many_many items
@@ -3054,7 +3054,7 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 				(($this->class == $childClass) ? "ChildID" : "{$childClass}ID") => true,
 				);
 				
-				DB::requireTable("{$this->class}_$relationship", $manymanyFields, $manymanyIndexes, true, null,
+				DB::require_table("{$this->class}_$relationship", $manymanyFields, $manymanyIndexes, true, null,
 					$extensions);
 			}
 		}

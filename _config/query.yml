@@ -1,5 +1,0 @@
----
-name: querybuilder
----
-DBQueryBuilder:
-  format: dev,test

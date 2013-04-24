@@ -331,8 +331,6 @@ abstract class Object {
 	 * If any extra values are discovered, they are then merged with the default PHP static values, or in some cases
 	 * completely replace the default PHP static when you set $replace = true, and do not define extra data on any
 	 * child classes
-	 * 
-	 * @deprecated since version 3.1
 	 *
 	 * @param string $class
 	 * @param string $name the property name
@@ -346,8 +344,6 @@ abstract class Object {
 
 	/**
 	 * Set a static variable
-	 * 
-	 * @deprecated since version 3.1
 	 *
 	 * @param string $class
 	 * @param string $name the property name to set
@@ -360,8 +356,6 @@ abstract class Object {
 
 	/**
 	 * Get an uninherited static variable - a variable that is explicity set in this class, and not in the parent class.
-	 * 
-	 * @deprecated since version 3.1
 	 *
 	 * @param string $class
 	 * @param string $name
@@ -375,8 +369,6 @@ abstract class Object {
 	/**
 	 * Traverse down a class ancestry and attempt to merge all the uninherited static values for a particular static
 	 * into a single variable
-	 * 
-	 * @deprecated since version 3.1
 	 *
 	 * @param string $class
 	 * @param string $name the static name
@@ -393,8 +385,6 @@ abstract class Object {
 	
 	/**
 	 * Merge in a set of additional static variables
-	 * 
-	 * @deprecated since version 3.1
 	 *
 	 * @param string $class
 	 * @param array $properties in a [property name] => [value] format
@@ -415,8 +405,6 @@ abstract class Object {
 	 * the function will merge it with a corresponding entry in another array too.
 	 * If, however, the arrays have the same numeric key, the later value will not overwrite the original value, 
 	 * but will be appended. 
-	 * 
-	 * @deprecated since version 3.1
 	 *
 	 * @param string $class
 	 * @param string $name the static name

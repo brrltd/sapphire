@@ -80,7 +80,7 @@ class Enum extends StringField {
 			'parts' => $parts
 		);
 
-		DB::requireField($this->tableName, $this->name, $values);
+		DB::require_field($this->tableName, $this->name, $values);
 	}
 	
 	/**

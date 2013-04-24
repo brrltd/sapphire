@@ -104,9 +104,9 @@ class CMSBatchActionHandler extends RequestHandler {
 					if($pages) foreach($pages as $page) unset($idsFromLive[$page->ID]);
 					$idsFromLive = array_keys($idsFromLive);
 
-                    $idsPlaceholder = DB::placeholders($idsFromLive);
+					$idsPlaceholder = DB::placeholders($idsFromLive);
 					$where = array(
-                        "\"{$this->recordClass}\".\"ID\" IN ($idsPlaceholder)" => $idsFromLive
+						"\"{$this->recordClass}\".\"ID\" IN ($idsPlaceholder)" => $idsFromLive
 					);
 					$livePages = Versioned::get_by_stage($this->recordClass, 'Live', $where);
 					if($pages) {

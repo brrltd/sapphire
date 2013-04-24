@@ -66,7 +66,7 @@ class DataListTest extends SapphireTest {
 	}
 	
 	public function testSql() {
-		$db = DB::getConn();
+		$db = DB::get_conn();
 		$list = DataObjectTest_TeamComment::get();
 		$expected = 'SELECT DISTINCT "DataObjectTest_TeamComment"."ClassName", "DataObjectTest_TeamComment"."Created",'
 			. ' "DataObjectTest_TeamComment"."LastEdited", "DataObjectTest_TeamComment"."Name",'
@@ -78,7 +78,7 @@ class DataListTest extends SapphireTest {
 	}
 	
 	public function testInnerJoin() {
-		$db = DB::getConn();
+		$db = DB::get_conn();
 
 		$list = DataObjectTest_TeamComment::get();
 		$list = $list->innerJoin(
@@ -99,7 +99,7 @@ class DataListTest extends SapphireTest {
 	}
 	
 	public function testLeftJoin() {
-		$db = DB::getConn();
+		$db = DB::get_conn();
 
 		$list = DataObjectTest_TeamComment::get();
 		$list = $list->leftJoin(

@@ -333,7 +333,7 @@ class PasswordEncryptor_LegacyPHPHash extends PasswordEncryptor_PHPHash {
  */
 class PasswordEncryptor_MySQLPassword extends PasswordEncryptor {
 	public function encrypt($password, $salt = null, $member = null) {
-		return DB::preparedQuery("SELECT PASSWORD(?)", array($password))->value();
+		return DB::prepared_query("SELECT PASSWORD(?)", array($password))->value();
 	}
 	
 	public function salt($password, $member = null) {
@@ -349,7 +349,7 @@ class PasswordEncryptor_MySQLPassword extends PasswordEncryptor {
  */
 class PasswordEncryptor_MySQLOldPassword extends PasswordEncryptor {
 	public function encrypt($password, $salt = null, $member = null) {
-		return DB::preparedQuery("SELECT OLD_PASSWORD(?)", array($password))->value();
+		return DB::prepared_query("SELECT OLD_PASSWORD(?)", array($password))->value();
 	}
 	
 	public function salt($password, $member = null) {

@@ -95,7 +95,7 @@ class FixtureFactory {
 		}
 		$insert = new SQLInsert($table, $fields);
 		$insert->execute();
-		$id = DB::getGeneratedID($table);
+		$id = DB::get_generated_id($table);
 		$this->fixtures[$table][$identifier] = $id;
 
 		return $id;
@@ -173,8 +173,8 @@ class FixtureFactory {
 				} else {
 					$table = $class;
 					$delete = new SQLDelete("\"$table\"", array(
-                        "\"$table\".\"ID\"" => $dbId
-                    ));
+						"\"$table\".\"ID\"" => $dbId
+					));
 					$delete->execute();
 				}
 

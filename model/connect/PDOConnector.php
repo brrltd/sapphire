@@ -127,8 +127,8 @@ class PDOConnector extends DBConnector {
 
 		// Check for errors
 		if (!$this->lastStatement || $this->hasError($this->lastStatement)) {
-			if(!$errorLevel) return null;
-			$this->databaseError("Couldn't run query: $sql | " . $this->getLastError(), $errorLevel);
+			$this->databaseError($this->getLastError(), $errorLevel, $sql);
+			return null;
 		}
 
 		return new PDOQuery($this->lastStatement);
@@ -213,10 +213,9 @@ class PDOConnector extends DBConnector {
 
 		// Check for errors
 		if (!$this->lastStatement || $this->hasError($this->lastStatement)) {
-			if(!$errorLevel) return null;
 			$values = $this->parameterValues($parameters);
-			$parametersError = empty($values) ? 'with no parameters' : "with parameters " . join(", ", $values);
-			$this->databaseError("Couldn't run query: $sql $parametersError | " . $this->getLastError(), $errorLevel);
+			$this->databaseError($this->getLastError(), $errorLevel, $sql, $values);
+			return null;
 		}
 
 		return new PDOQuery($this->lastStatement);

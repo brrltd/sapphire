@@ -11,12 +11,8 @@
 
 /**
  * SilverStripe CMS Installer
+ * This installer doesn't use any of the fancy SilverStripe stuff in case it's unsupported.
  */
-require_once(FRAMEWORK_NAME . '/core/Core.php');
-
-// Unhook Debug error handlers
-restore_error_handler();
-restore_exception_handler();
 
 // speed up mysql_connect timeout if the server can't be found
 ini_set('mysql.connect_timeout', 5);
@@ -61,6 +57,9 @@ if($envFileExists) {
 		$usingEnv = false;
 	}
 }
+
+require_once FRAMEWORK_NAME . '/dev/install/DatabaseConfigurationHelper.php';
+require_once FRAMEWORK_NAME . '/dev/install/DatabaseAdapterRegistry.php';
 
 // Set default locale, but try and sniff from the user agent
 $defaultLocale = 'en_US';
@@ -1133,6 +1132,10 @@ require_once('conf/ConfigureFromEnv.php');
 
 // Set the site locale
 i18n::set_locale('$locale');
+		
+// Selected theme
+Config::inst()->update('SSViewer', 'theme', '$theme');
+
 PHP
 			);
 
@@ -1159,6 +1162,10 @@ global \$databaseConfig;
 
 // Set the site locale
 i18n::set_locale('$locale');
+		
+// Selected theme
+Config::inst()->update('SSViewer', 'theme', '$theme');
+
 PHP
 			);
 		}

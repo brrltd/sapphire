@@ -86,7 +86,7 @@ class FixtureBlueprint {
 				$obj->ID = $data['ID'];
 				
 				// The database needs to allow inserting values into the foreign key column (ID in our case)
-				$conn = DB::getConn();
+				$conn = DB::get_conn();
 				if(method_exists($conn, 'allowPrimaryKeyEditing')) {
 					$conn->allowPrimaryKeyEditing(ClassInfo::baseDataClass($class), true);
 				}

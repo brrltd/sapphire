@@ -166,7 +166,7 @@ class DataObjectTest extends SapphireTest {
 		$subteam1 = DataObject::get_one('dataobjecttest_subteam', array(
 			'"DataObjectTest_Team"."Title"' => 'Subteam 1'
 		), true);
-        $this->assertNotEmpty($subteam1);
+		$this->assertNotEmpty($subteam1);
 		$this->assertEquals($subteam1->Title, "Subteam 1");
 	}
 
@@ -391,10 +391,10 @@ class DataObjectTest extends SapphireTest {
 		$this->assertFalse($obj->isChanged());
 
 		/* If we perform the same random query twice, it shouldn't return the same results */
-		$itemsA = DataObject::get("DataObjectTest_TeamComment", "", DB::getConn()->random());
-		$itemsB = DataObject::get("DataObjectTest_TeamComment", "", DB::getConn()->random());
-		$itemsC = DataObject::get("DataObjectTest_TeamComment", "", DB::getConn()->random());
-		$itemsD = DataObject::get("DataObjectTest_TeamComment", "", DB::getConn()->random());
+		$itemsA = DataObject::get("DataObjectTest_TeamComment", "", DB::get_conn()->random());
+		$itemsB = DataObject::get("DataObjectTest_TeamComment", "", DB::get_conn()->random());
+		$itemsC = DataObject::get("DataObjectTest_TeamComment", "", DB::get_conn()->random());
+		$itemsD = DataObject::get("DataObjectTest_TeamComment", "", DB::get_conn()->random());
 		foreach($itemsA as $item) $keysA[] = $item->ID;
 		foreach($itemsB as $item) $keysB[] = $item->ID;
 		foreach($itemsC as $item) $keysC[] = $item->ID;
@@ -678,7 +678,7 @@ class DataObjectTest extends SapphireTest {
 	
 	public function testForceInsert() {
 		/* If you set an ID on an object and pass forceInsert = true, then the object should be correctly created */
-		$conn = DB::getConn();
+		$conn = DB::get_conn();
 		if(method_exists($conn, 'allowPrimaryKeyEditing')) $conn->allowPrimaryKeyEditing('DataObjectTest_Team', true);
 		$obj = new DataObjectTest_SubTeam();
 		$obj->ID = 1001;

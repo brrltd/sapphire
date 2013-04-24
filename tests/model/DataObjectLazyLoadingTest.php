@@ -27,7 +27,7 @@ class DataObjectLazyLoadingTest extends SapphireTest {
 	);
 
 	public function testQueriedColumnsID() {
-		$db = DB::getConn();
+		$db = DB::get_conn();
 		$playerList = new DataList('DataObjectTest_SubTeam');
 		$playerList = $playerList->setQueriedColumns(array('ID'));
 		$expected = 'SELECT DISTINCT "DataObjectTest_Team"."ClassName", "DataObjectTest_Team"."Created", ' .
@@ -41,7 +41,7 @@ class DataObjectLazyLoadingTest extends SapphireTest {
 	}
 
 	public function testQueriedColumnsFromBaseTableAndSubTable() {
-		$db = DB::getConn();
+		$db = DB::get_conn();
 		$playerList = new DataList('DataObjectTest_SubTeam');
 		$playerList = $playerList->setQueriedColumns(array('Title', 'SubclassDatabaseField'));
 		$expected = 'SELECT DISTINCT "DataObjectTest_Team"."ClassName", "DataObjectTest_Team"."Created", ' .
@@ -56,7 +56,7 @@ class DataObjectLazyLoadingTest extends SapphireTest {
 	}
 
 	public function testQueriedColumnsFromBaseTable() {
-		$db = DB::getConn();
+		$db = DB::get_conn();
 		$playerList = new DataList('DataObjectTest_SubTeam');
 		$playerList = $playerList->setQueriedColumns(array('Title'));
 		$expected = 'SELECT DISTINCT "DataObjectTest_Team"."ClassName", "DataObjectTest_Team"."Created", ' .
@@ -69,7 +69,7 @@ class DataObjectLazyLoadingTest extends SapphireTest {
 	}
 
 	public function testQueriedColumnsFromSubTable() {
-		$db = DB::getConn();
+		$db = DB::get_conn();
 		$playerList = new DataList('DataObjectTest_SubTeam');
 		$playerList = $playerList->setQueriedColumns(array('SubclassDatabaseField'));
 		$expected = 'SELECT DISTINCT "DataObjectTest_Team"."ClassName", "DataObjectTest_Team"."Created", ' .
@@ -89,10 +89,10 @@ class DataObjectLazyLoadingTest extends SapphireTest {
 		// Shouldn't be a left join in here.
 		$this->assertEquals(0, 
 			preg_match(
-                $this->normaliseSQL('/SELECT DISTINCT "DataObjectTest_Team"."ID" .* LEFT JOIN .* FROM "DataObjectTest_Team"/'),
-                $this->normaliseSQL($playerList->sql($parameters))
-            )
-        );
+				$this->normaliseSQL('/SELECT DISTINCT "DataObjectTest_Team"."ID" .* LEFT JOIN .* FROM "DataObjectTest_Team"/'),
+				$this->normaliseSQL($playerList->sql($parameters))
+			)
+		);
 	}
 
 	public function testNoSpecificColumnNamesSubclassDataObjectQuery() {
@@ -100,9 +100,9 @@ class DataObjectLazyLoadingTest extends SapphireTest {
 		$playerList = new DataList('DataObjectTest_SubTeam');
 		// Should be a left join.
 		$this->assertEquals(1, preg_match(
-            $this->normaliseSQL('/SELECT DISTINCT .* LEFT JOIN .* /'),
-            $this->normaliseSQL($playerList->sql($parameters))
-        ));
+			$this->normaliseSQL('/SELECT DISTINCT .* LEFT JOIN .* /'),
+			$this->normaliseSQL($playerList->sql($parameters))
+		));
 	}
 
 	public function testLazyLoadedFieldsHasField() {

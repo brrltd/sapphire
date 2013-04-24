@@ -36,7 +36,7 @@ class DbDatetimeTest extends FunctionalTest {
 	 */
 	private function checkPreconditions() {
 		// number of seconds of php and db time are out of sync
-		$offset = time() - strtotime(DB::query('SELECT ' . DB::getConn()->now())->value());
+		$offset = time() - strtotime(DB::query('SELECT ' . DB::get_conn()->now())->value());
 		$threshold = 5; // seconds
 
 		if($offset > 5) {
@@ -53,7 +53,7 @@ class DbDatetimeTest extends FunctionalTest {
 
 	public function setUp() {
 		parent::setUp();
-		$this->adapter = DB::getConn();
+		$this->adapter = DB::get_conn();
 	}
 
 	public function testCorrectNow() {

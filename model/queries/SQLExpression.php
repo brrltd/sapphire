@@ -27,7 +27,7 @@ abstract class SQLExpression {
 	 * @deprecated since version 3.2
 	 */
 	public function __get($field) {
-		Deprecation::notice('3.1', 'use get{Field} to get the necessary protected field\'s value');
+		Deprecation::notice('3.2', 'use get{Field} to get the necessary protected field\'s value');
 		return $this->$field;
 	}
 
@@ -35,7 +35,7 @@ abstract class SQLExpression {
 	 * @deprecated since version 3.2
 	 */
 	public function __set($field, $value) {
-		Deprecation::notice('3.1', 'use set{Field} to set the necessary protected field\'s value');
+		Deprecation::notice('3.2', 'use set{Field} to set the necessary protected field\'s value');
 		return $this->$field = $value;
 	}
 
@@ -82,7 +82,7 @@ abstract class SQLExpression {
 	public function renameTable($old, $new) {
 		$this->replaceText("`$old`", "`$new`");
 		$this->replaceText("\"$old\"", "\"$new\"");
-		$this->replaceText(Convert::id2sql($old), Convert::id2sql($new));
+		$this->replaceText(Convert::symbol2sql($old), Convert::symbol2sql($new));
 	}
 	
 	/**
@@ -98,10 +98,13 @@ abstract class SQLExpression {
 	 * @param array $parameters Out variable for parameters required for this query
 	 * @return string The completed SQL query
 	 */
-	public function sql(&$parameters) {
+	public function sql(&$parameters = array()) {
+		if(func_num_args() == 0) {
+			Deprecation::notice('3.2', 'SQLExpression::sql() now may produce parameters which are necessary to execute this query');
+		}
 		
 		// Build each component as needed
-		$sql = DB::buildSQL($this, $parameters);
+		$sql = DB::build_sql($this, $parameters);
 		
 		if(empty($sql)) return null;
 		
@@ -119,21 +122,21 @@ abstract class SQLExpression {
 	 */
 	public function execute() {
 		$sql = $this->sql($parameters);
-		return DB::preparedQuery($sql, $parameters);
+		return DB::prepared_query($sql, $parameters);
 	}
-    
-    /**
-     * Copies the query parameters contained in this object to another
-     * SQLExpression
-     * 
-     * @param SQLExpression $expression The object to copy properties to
-     */
-    protected function copyTo(SQLExpression $object) {
-        $target = array_keys(get_object_vars($object));
-        foreach(get_object_vars($this) as $variable => $value) {
-            if(in_array($variable, $target)) {
-                $object->$variable = $value;
-            }
-        }
-    }
+
+	/**
+	 * Copies the query parameters contained in this object to another
+	 * SQLExpression
+	 * 
+	 * @param SQLExpression $expression The object to copy properties to
+	 */
+	protected function copyTo(SQLExpression $object) {
+		$target = array_keys(get_object_vars($object));
+		foreach(get_object_vars($this) as $variable => $value) {
+			if(in_array($variable, $target)) {
+				$object->$variable = $value;
+			}
+		}
+	}
 }

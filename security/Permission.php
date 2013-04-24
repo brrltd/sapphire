@@ -192,7 +192,7 @@ class Permission extends DataObject implements TemplateGlobalProvider {
 		$adminFilter = (Config::inst()->get('Permission', 'admin_implies_all')) ?  ",'ADMIN'" : '';
 
 		// Raw SQL for efficiency
-		$permission = DB::preparedQuery(
+		$permission = DB::prepared_query(
 			"SELECT \"ID\"
 			FROM \"Permission\"
 			WHERE (
@@ -214,7 +214,7 @@ class Permission extends DataObject implements TemplateGlobalProvider {
 
 		// Strict checking disabled?
 		if(!Config::inst()->get('Permission', 'strict_checking') || !$strict) {
-			$hasPermission = DB::preparedQuery(
+			$hasPermission = DB::prepared_query(
 				"SELECT COUNT(*) 
 				FROM \"Permission\"
 				WHERE (

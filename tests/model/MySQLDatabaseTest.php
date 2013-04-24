@@ -10,7 +10,7 @@ class MySQLDatabaseTest extends SapphireTest {
 	);
 	
 	public function setUp() {
-		if(DB::getConn() instanceof MySQLDatabase) {
+		if(DB::get_conn() instanceof MySQLDatabase) {
 			MySQLDatabaseTest_DO::config()->db = array(
 				'MultiEnum1' => 'MultiEnum("A, B, C, D","")',
 				'MultiEnum2' => 'MultiEnum("A, B, C, D","A")',
@@ -26,8 +26,8 @@ class MySQLDatabaseTest extends SapphireTest {
 	 */
 	public function testFieldsDontRerequestChanges() {
 		// These are MySQL specific :-S
-		if(DB::getConn() instanceof MySQLDatabase) {
-			$schema = DB::getSchema();
+		if(DB::get_conn() instanceof MySQLDatabase) {
+			$schema = DB::get_schema();
 			$test = $this;
 			DB::quiet();
 		

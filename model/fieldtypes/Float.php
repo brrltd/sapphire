@@ -21,7 +21,7 @@ class Float extends DBField {
 			'arrayValue'=>$this->arrayValue
 		);
 		$values = Array('type'=>'float', 'parts'=>$parts);
-		DB::requireField($this->tableName, $this->name, $values);
+		DB::require_field($this->tableName, $this->name, $values);
 	}
 	
 	/**

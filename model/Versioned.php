@@ -311,7 +311,7 @@ class Versioned extends DataExtension {
 	 */
 	public static function on_db_reset() {
 		// Drop all temporary tables
-		$db = DB::getConn();
+		$db = DB::get_conn();
 		foreach(self::$archive_tables as $tableName) {
 			if(method_exists($db, 'dropTable')) $db->dropTable($tableName);
 			else $db->query("DROP TABLE \"$tableName\"");
@@ -389,7 +389,7 @@ class Versioned extends DataExtension {
 					}
 					
 					if($stage != $this->defaultStage) {
-						DB::requireTable("{$table}_$stage", $fields, $indexes, false, $options);
+						DB::require_table("{$table}_$stage", $fields, $indexes, false, $options);
 					}
 	
 					// Version fields on each root table (including Stage)
@@ -441,7 +441,7 @@ class Versioned extends DataExtension {
 					);
 				}
 				
-				if(DB::getSchema()->hasTable("{$table}_versions")) {
+				if(DB::get_schema()->hasTable("{$table}_versions")) {
 					// Fix data that lacks the uniqueness constraint (since this was added later and
 					// bugs meant that the constraint was validated)
 					$duplications = DB::query("SELECT MIN(\"ID\") AS \"ID\", \"RecordID\", \"Version\" 
@@ -451,7 +451,7 @@ class Versioned extends DataExtension {
 					foreach($duplications as $dup) {
 						DB::alteration_message("Removing {$table}_versions duplicate data for "
 							."{$dup['RecordID']}/{$dup['Version']}" ,"deleted");
-						DB::preparedQuery(
+						DB::prepared_query(
 							"DELETE FROM \"{$table}_versions\" WHERE \"RecordID\" = ?
 							AND \"Version\" = ? AND \"ID\" != ?",
 							array($dup['RecordID'], $dup['Version'], $dup['ID'])
@@ -486,7 +486,7 @@ class Versioned extends DataExtension {
 
 								if(is_array($affectedIDs)) {
 									foreach($affectedIDs as $key => $value) {
-										DB::preparedQuery(
+										DB::prepared_query(
 											"DELETE FROM \"{$table}_versions\" WHERE \"ID\" = ?",
 											array($value)
 										);
@@ -497,11 +497,11 @@ class Versioned extends DataExtension {
 					}
 				}
 
-				DB::requireTable("{$table}_versions", $versionFields, $versionIndexes, true, $options);
+				DB::require_table("{$table}_versions", $versionFields, $versionIndexes, true, $options);
 			} else {
-				DB::dontRequireTable("{$table}_versions");
+				DB::dont_require_table("{$table}_versions");
 				foreach($this->stages as $stage) {
-					if($stage != $this->defaultStage) DB::dontrequireTable("{$table}_$stage");
+					if($stage != $this->defaultStage) DB::dont_require_table("{$table}_$stage");
 				}
 			}
 		}
@@ -542,7 +542,7 @@ class Versioned extends DataExtension {
 			// Otherwise, we're just copying a version to another table
 			if(!isset($manipulation[$table]['fields']['Version'])) {
 				// Add any extra, unchanged fields to the version record.
-				$data = DB::preparedQuery("SELECT * FROM \"$table\" WHERE \"ID\" = ?", array($id))->record();
+				$data = DB::prepared_query("SELECT * FROM \"$table\" WHERE \"ID\" = ?", array($id))->record();
 				if($data) foreach($data as $k => $v) {
 					if (!isset($newManipulation['fields'][$k])) {
 						$newManipulation['fields'][$k] = $v;
@@ -558,7 +558,7 @@ class Versioned extends DataExtension {
 				else unset($nextVersion);
 
 				if($rid && !isset($nextVersion)) {
-					$nextVersion = DB::preparedQuery("SELECT MAX(\"Version\") + 1
+					$nextVersion = DB::prepared_query("SELECT MAX(\"Version\") + 1
 						FROM \"{$baseDataClass}_versions\" WHERE \"RecordID\" = ?",
 						array($rid)
 					)->value();
@@ -596,7 +596,7 @@ class Versioned extends DataExtension {
 			if(Versioned::current_stage() && Versioned::current_stage() != $this->defaultStage) {
 				// If the record has already been inserted in the (table), get rid of it. 
 				if($manipulation[$table]['command']=='insert') {
-					DB::preparedQuery(
+					DB::prepared_query(
 						"DELETE FROM \"{$table}\" WHERE \"ID\" = ?",
 						array($id)
 					);
@@ -690,7 +690,7 @@ class Versioned extends DataExtension {
 		
 		$table2 = $table1 . "_$this->liveStage";
 
-		return DB::preparedQuery("SELECT \"$table1\".\"Version\" = \"$table2\".\"Version\" FROM \"$table1\"
+		return DB::prepared_query("SELECT \"$table1\".\"Version\" = \"$table2\".\"Version\" FROM \"$table1\"
 			 INNER JOIN \"$table2\" ON \"$table1\".\"ID\" = \"$table2\".\"ID\"
 			 WHERE \"$table1\".\"ID\" = ?",
 			array($this->owner->ID)
@@ -729,7 +729,7 @@ class Versioned extends DataExtension {
 			}
 			
 			// Mark this version as having been published at some stage
-			DB::preparedQuery("UPDATE \"{$extTable}_versions\"
+			DB::prepared_query("UPDATE \"{$extTable}_versions\"
 				SET \"WasPublished\" = ?, \"PublisherID\" = ?
 				WHERE \"RecordID\" = ? AND \"Version\" = ?",
 				array(1, $publisherID, $from->ID, $from->Version)
@@ -738,7 +738,7 @@ class Versioned extends DataExtension {
 			$oldMode = Versioned::get_reading_mode();
 			Versioned::reading_stage($toStage);
 
-			$conn = DB::getConn();
+			$conn = DB::get_conn();
 			if(method_exists($conn, 'allowPrimaryKeyEditing')) $conn->allowPrimaryKeyEditing($baseClass, true);
 			$from->write();
 			if(method_exists($conn, 'allowPrimaryKeyEditing')) $conn->allowPrimaryKeyEditing($baseClass, false);
@@ -775,7 +775,7 @@ class Versioned extends DataExtension {
 
 		// We test for equality - if one of the versions doesn't exist, this will be false
 		//TODO: DB Abstraction: if statement here:
-		$stagesAreEqual = DB::preparedQuery(
+		$stagesAreEqual = DB::prepared_query(
 			"SELECT CASE WHEN \"$table1\".\"Version\"=\"$table2\".\"Version\" THEN 1 ELSE 0 END
 			 FROM \"$table1\" INNER JOIN \"$table2\" ON \"$table1\".\"ID\" = \"$table2\".\"ID\"
 			 AND \"$table1\".\"ID\" = ?",
@@ -1008,7 +1008,7 @@ class Versioned extends DataExtension {
 		}
 
 		// get version as performance-optimized SQL query (gets called for each page in the sitetree)
-		$version = DB::preparedQuery(
+		$version = DB::prepared_query(
 			"SELECT \"Version\" FROM \"$stageTable\" WHERE \"ID\" = ?",
 			array($id)
 		)->value();
@@ -1045,7 +1045,7 @@ class Versioned extends DataExtension {
 		$baseClass = ClassInfo::baseDataClass($class);
 		$stageTable = ($stage == 'Stage') ? $baseClass : "{$baseClass}_{$stage}";
 
-		$versions = DB::preparedQuery("SELECT \"ID\", \"Version\" FROM \"$stageTable\" $filter", $parameters)->map();
+		$versions = DB::prepared_query("SELECT \"ID\", \"Version\" FROM \"$stageTable\" $filter", $parameters)->map();
 		foreach($versions as $id => $version) {
 			self::$cache_versionnumber[$baseClass][$stage][$id] = $version;
 		}

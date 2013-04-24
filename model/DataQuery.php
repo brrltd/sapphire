@@ -347,7 +347,10 @@ class DataQuery {
 	 * @param array $parameters Out variable for parameters required for this query
 	 * @param string The resulting SQL query (may be paramaterised)
 	 */
-	public function sql(&$parameters) {
+	public function sql(&$parameters = array()) {
+		if(func_num_args() == 0) {
+			Deprecation::notice('3.2', 'DataQuery::sql() now may produce parameters which are necessary to execute this query');
+		}
 		return $this->getFinalisedQuery()->sql($parameters);
 	}
 
@@ -504,7 +507,7 @@ class DataQuery {
 	 * Set a WHERE with OR.
 	 * 
 	 * @see SQLSelect::addWhere() for syntax examples, although DataQuery
-	 * won't expand multiple arguments as SQLSelect does.
+	 * won't expand multiple method arguments as SQLSelect does.
 	 *
 	 * @param string|array|SQLConditionGroup $filter Predicate(s) to set, as escaped SQL statements or paramaterised queries
 	 * @return DataQuery
@@ -822,7 +825,7 @@ class DataQuery_SubGroup extends DataQuery implements SQLConditionGroup {
 		if(empty($where)) return null;
 		
 		// Allow database to manage joining of conditions
-		$sql = DB::getConn()->getQueryBuilder()->buildWhereFragment($this->whereQuery, $parameters);
+		$sql = DB::get_conn()->getQueryBuilder()->buildWhereFragment($this->whereQuery, $parameters);
 		return preg_replace('/^\s*WHERE\s*/i', '', $sql);
 	}
 }

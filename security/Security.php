@@ -889,7 +889,7 @@ class Security extends Controller {
 			singleton($table);
 		
 			// if any of the tables don't have all fields mapped as table columns
-			$dbFields = DB::fieldList($table);
+			$dbFields = DB::field_list($table);
 			if(!$dbFields) return false;
 			
 			$objFields = DataObject::database_fields($table);

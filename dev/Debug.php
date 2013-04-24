@@ -494,17 +494,19 @@ class Debug {
 			// This basically calls Permission::checkMember($_SESSION['loggedInAs'], 'ADMIN');
 			
 			$memberID = $_SESSION['loggedInAs'];
-			$permission = DB::query("
-				SELECT \"ID\" FROM \"Permission\"
-				WHERE \"Code\" = ? 
-				AND \"Type\" = ? 
-				AND \"GroupID\" IN (SELECT \"GroupID\" from \"Group_Members\" WHERE \"MemberID\" = ?)",
-				array('ADMIN', Permission::GRANT_PERMISSION, $memberID)
+			$permission = DB::prepared_query('
+				SELECT "ID" FROM "Permission"
+				WHERE "Code" = ? 
+				AND "Type" = ? 
+				AND "GroupID" IN (SELECT "GroupID" from "Group_Members" WHERE "MemberID" = ?)',
+				array(
+					'ADMIN', // Code
+					Permission::GRANT_PERMISSION, // Type
+					$memberID // MemberID
+				)
 			)->value();
 			
-			if($permission) {
-				return;
-			}
+			if($permission) return;
 		}
 		
 		// This basically does the same as

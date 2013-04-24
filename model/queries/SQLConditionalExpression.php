@@ -30,11 +30,11 @@ abstract class SQLConditionalExpression extends SQLExpression {
 	 * An array of tables. The first one is just the table name.
 	 * Used as the FROM in DELETE/SELECT statements, the INTO in INSERT statements,
 	 * and the target table in UPDATE statements
-     * 
-     * The keys of this array are the aliases of the tables (unquoted), where the
-     * values are either the literal table names, or an array with join details.
-     * 
-     * @see SQLConditionalExpression::addLeftJoin()
+	 * 
+	 * The keys of this array are the aliases of the tables (unquoted), where the
+	 * values are either the literal table names, or an array with join details.
+	 * 
+	 * @see SQLConditionalExpression::addLeftJoin()
 	 * 
 	 * @var array
 	 */
@@ -702,31 +702,31 @@ abstract class SQLConditionalExpression extends SQLExpression {
 	 */
 	public function toDelete() {
 		$delete = new SQLDelete();
-        $this->copyTo($delete);
-        return $delete;
+		$this->copyTo($delete);
+		return $delete;
 	}
-    
-    /**
+
+	/**
 	 * Generates an SQLSelect object using the currently specified parameters.
 	 * 
 	 * @return SQLSelect
 	 */
-    public function toSelect() {
+	public function toSelect() {
 		$select = new SQLSelect();
-        $this->copyTo($select);
-        return $select;
-    }
-    
-    /**
+		$this->copyTo($select);
+		return $select;
+	}
+
+	/**
 	 * Generates an SQLUpdate object using the currently specified parameters.
-     * No fields will have any assigned values for the newly generated SQLUpdate
-     * object.
-     * 
+	 * No fields will have any assigned values for the newly generated SQLUpdate
+	 * object.
+	 * 
 	 * @return SQLUpdate
 	 */
-    public function toUpdate() {
+	public function toUpdate() {
 		$update = new SQLUpdate();
-        $this->copyTo($update);
-        return $update;
-    }
+		$this->copyTo($update);
+		return $update;
+	}
 }

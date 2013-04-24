@@ -208,23 +208,6 @@ class SQLSelect extends SQLConditionalExpression {
 	}
 
 	/**
-	 * @deprecated since version 3.2
-	 */
-	public function setDelete($value) {
-		$message = 'SQLSelect->setDelete no longer works. Create a SQLDelete object instead, or use toDelete()';
-		Deprecation::notice('3.2', $message);
-		user_error($message, E_USER_DEPRECATED);
-	}
-
-	/**
-	 * @deprecated since version 3.2
-	 */
-	public function getDelete() {
-		Deprecation::notice('3.2', 'Use SQLDelete object instead');
-		return false;
-	}
-
-	/**
 	 * Get the limit property.
 	 * @return array
 	 */
@@ -588,7 +571,7 @@ class SQLSelect extends SQLConditionalExpression {
 				$countQuery->select("count(*)");
 				$countQuery->addFrom(array('(' . $clone->sql($innerParameters) . ') all_distinct'));
 				$sql = $countQuery->sql($parameters); // $parameters should be empty
-				$result = DB::preparedQuery($sql, $innerParameters);
+				$result = DB::prepared_query($sql, $innerParameters);
 				return $result->value();
 			} else {
 				$clone->setSelect(array("count(*)"));
@@ -640,9 +623,9 @@ class SQLSelect extends SQLConditionalExpression {
 		if($this->limit) {
 			if($count >= ($this->limit['start'] + $this->limit['limit'])) {
 				return $this->limit['limit'];
-            } else {
+			} else {
 				return max(0, $count - $this->limit['start']);
-            }
+			}
 			
 		// Otherwise, the count is going to be the output of the SQL query
 		} else {

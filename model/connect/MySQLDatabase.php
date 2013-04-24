@@ -63,7 +63,7 @@ class MySQLDatabase extends SS_Database {
 	 * @deprecated 3.1 Use "MySQLDatabase.connection_charset" config setting instead
 	 */
 	public static function set_connection_charset($charset = 'utf8') {
-		Deprecation::notice('3.2', 'Use "MySQLDatabase.connection_charset" config setting instead');
+		Deprecation::notice('3.1', 'Use "MySQLDatabase.connection_charset" config setting instead');
 		Config::inst()->update('MySQLDatabase', 'connection_charset', $charset);
 	}
 

@@ -369,7 +369,7 @@ class Member extends DataObject implements TemplateGlobalProvider {
 		}
 		
 		// Don't set column if its not built yet (the login might be precursor to a /dev/build...)
-		if(array_key_exists('LockedOutUntil', DB::fieldList('Member'))) {
+		if(array_key_exists('LockedOutUntil', DB::field_list('Member'))) {
 			$this->LockedOutUntil = null;
 		}
 
@@ -532,7 +532,7 @@ class Member extends DataObject implements TemplateGlobalProvider {
 	 */
 	public static function member_from_autologinhash($hash, $login = false) {
 		
-		$nowExpression = DB::getConn()->now();
+		$nowExpression = DB::get_conn()->now();
 		$member = DataObject::get_one('Member', array(
 			"\"Member\".\"AutoLoginHash\"" => $hash,
 			"\"Member\".\"AutoLoginExpired\" > $nowExpression" // NOW() can't be parameterised
@@ -887,7 +887,7 @@ class Member extends DataObject implements TemplateGlobalProvider {
 	 */
 	public static function get_title_sql($tableName = 'Member') {
 		// This should be abstracted to SSDatabase concatOperator or similar.
-		$op = (DB::getConn() instanceof MSSQLDatabase) ? " + " : " || ";
+		$op = (DB::get_conn() instanceof MSSQLDatabase) ? " + " : " || ";
 
 		$format = self::config()->title_format;
 		if ($format) {

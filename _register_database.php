@@ -6,7 +6,7 @@ $frameworkPath = defined('FRAMEWORK_PATH') ? FRAMEWORK_PATH : FRAMEWORK_NAME;
 // Use MySQL PDO as default
 DatabaseAdapterRegistry::register(
 	array(
-		'class' => 'MySQLDatabase',
+		'class' => 'MySQLPDODatabase',
 		'title' => 'MySQL 5.0+ (using PDO)',
 		'helperPath' => $frameworkPath . '/dev/install/MySQLDatabaseConfigurationHelper.php',
 		'supported' => (class_exists('PDO') && in_array('mysql', PDO::getAvailableDrivers())),
@@ -20,12 +20,12 @@ DatabaseAdapterRegistry::register(
 // Setup MySQLi as alternate option
 DatabaseAdapterRegistry::register(
 	array(
-		'class' => 'MySQLiDatabase',
+		'class' => 'MySQLDatabase',
 		'title' => 'MySQL 5.0+ (using MySQLi)',
 		'helperPath' => $frameworkPath . '/dev/install/MySQLDatabaseConfigurationHelper.php',
 		'supported' => class_exists('MySQLi'),
 		'missingExtensionText' =>
 			'The <a href="http://www.php.net/manual/en/book.mysqli.php">MySQLi</a>
-			PHP extensions is not available. Please install or enable it and refresh this page.'
+			PHP extension is not available. Please install or enable it and refresh this page.'
 	)
 );

@@ -461,7 +461,7 @@ class File extends DataObject {
 	 */
 	public function deleteDatabaseOnly() {
 		if(is_numeric($this->ID)) {
-			DB::preparedQuery('DELETE FROM "File" WHERE "ID" = ?', array($this->ID));
+			DB::prepared_query('DELETE FROM "File" WHERE "ID" = ?', array($this->ID));
 		}
 	}
 

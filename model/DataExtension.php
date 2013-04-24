@@ -180,4 +180,3 @@ abstract class DataExtension extends Extension {
 	}
 
 }
-

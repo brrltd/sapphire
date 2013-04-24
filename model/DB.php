@@ -7,6 +7,7 @@
  * @subpackage model
  */
 class DB {
+	
 	/**
 	 * This constant was added in SilverStripe 2.4 to indicate that SQL-queries
 	 * should now use ANSI-compatible syntax.  The most notable affect of this
@@ -37,26 +38,44 @@ class DB {
 	 * Set the global database connection.
 	 * Pass an object that's a subclass of SS_Database.  This object will be used when {@link DB::query()}
 	 * is called.
+	 * 
 	 * @param $connection The connecton object to set as the connection.
 	 * @param $name The name to give to this connection.  If you omit this argument, the connection
 	 * will be the default one used by the ORM.  However, you can store other named connections to
-	 * be accessed through DB::getConn($name).  This is useful when you have an application that
+	 * be accessed through DB::get_conn($name).  This is useful when you have an application that
 	 * needs to connect to more than one database.
 	 */
-	public static function setConn(SS_Database $connection, $name = 'default') {
+	public static function set_conn(SS_Database $connection, $name = 'default') {
 		self::$connections[$name] = $connection;
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::set_conn instead
+	 */
+	public static function setConn(SS_Database $connection, $name = 'default') {
+		Deprecation::notice('3.2', 'Use DB::set_conn instead');
+		self::set_conn($connection, $name);
 	}
 
 	/**
 	 * Get the global database connection.
+	 * 
 	 * @param string $name An optional name given to a connection in the DB::setConn() call.  If omitted, 
 	 * the default connection is returned.
 	 * @return SS_Database
 	 */
-	public static function getConn($name = 'default') {
+	public static function get_conn($name = 'default') {
 		if(isset(self::$connections[$name])) {
 			return self::$connections[$name];
 		}
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::get_conn instead
+	 */
+	public static function getConn($name = 'default') {
+		Deprecation::notice('3.2', 'Use DB::get_conn instead');
+		return self::get_conn($name);
 	}
 	
 	/**
@@ -66,8 +85,8 @@ class DB {
 	 * the default connection is returned.
 	 * @return DBSchemaManager
 	 */
-	public static function getSchema($name = 'default') {
-		$connection = self::getConn($name);
+	public static function get_schema($name = 'default') {
+		$connection = self::get_conn($name);
 		if($connection) return $connection->getSchemaManager();
 	}
 	
@@ -80,8 +99,8 @@ class DB {
 	 * the default connection is returned.
 	 * @return string The resulting SQL as a string
 	 */
-	public static function buildSQL(SQLExpression $expression, &$parameters, $name = 'default') {
-		$connection = self::getConn($name);
+	public static function build_sql(SQLExpression $expression, &$parameters, $name = 'default') {
+		$connection = self::get_conn($name);
 		if($connection) {
 			return $connection->getQueryBuilder()->buildSQL($expression, $parameters);
 		} else {
@@ -92,12 +111,13 @@ class DB {
 	
 	/**
 	 * Retrieves the connector object for the current database
+	 * 
 	 * @param string $name An optional name given to a connection in the DB::setConn() call.  If omitted, 
 	 * the default connection is returned.
 	 * @return DBConnector
 	 */
-	public static function getConnector($name = 'default') {
-		$connection = self::getConn($name);
+	public static function get_connector($name = 'default') {
+		$connection = self::get_conn($name);
 		if($connection) return $connection->getConnector();
 	}
 	
@@ -214,7 +234,7 @@ class DB {
 		$conn = Injector::inst()->get($dbClass);
 		$conn->connect($databaseConfig);
 
-		self::setConn($conn);
+		self::set_conn($conn);
 	}
 	
 	/**
@@ -224,6 +244,13 @@ class DB {
 	 */
 	public static function connection_attempted() {
 		return self::$connection_attempted;
+	}
+	
+	/**
+	 * @deprecated since version 3.2 DB::getConnect was never implemented and is obsolete
+	 */
+	public static function getConnect($parameters) {
+		Deprecation::notice('3.2', 'DB::getConnect was never implemented and is obsolete');
 	}
 
 	/**
@@ -235,7 +262,7 @@ class DB {
 	public static function query($sql, $errorLevel = E_USER_ERROR) {
 		self::$lastQuery = $sql;
 		
-		return self::getConn()->query($sql, $errorLevel);
+		return self::get_conn()->query($sql, $errorLevel);
 	}
 	
 	/**
@@ -267,10 +294,10 @@ class DB {
 	 * @param int $errorLevel The level of error reporting to enable for the query
 	 * @return SS_Query
 	 */
-	public static function preparedQuery($sql, $parameters, $errorLevel = E_USER_ERROR) {
+	public static function prepared_query($sql, $parameters, $errorLevel = E_USER_ERROR) {
 		self::$lastQuery = $sql;
 		
-		return self::getConn()->preparedQuery($sql, $parameters, $errorLevel);
+		return self::get_conn()->preparedQuery($sql, $parameters, $errorLevel);
 	}
 
 	/**
@@ -317,23 +344,40 @@ class DB {
 	 */
 	public static function manipulate($manipulation) {
 		self::$lastQuery = $manipulation;
-		return self::getConn()->manipulate($manipulation);
+		return self::get_conn()->manipulate($manipulation);
 	}
 
 	/**
 	 * Get the autogenerated ID from the previous INSERT query.
 	 * @return int
 	 */
+	public static function get_generated_id($table) {
+		return self::get_conn()->getGeneratedID($table);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::get_generated_id instead
+	 */
 	public static function getGeneratedID($table) {
-		return self::getConn()->getGeneratedID($table);
+		Deprecation::notice('3.2', 'Use DB::get_generated_id instead');
+		return self::get_generated_id($table);
 	}
 
 	/**
 	 * Check if the connection to the database is active.
+	 * 
 	 * @return boolean
 	 */
+	public static function is_active() {
+		return ($conn = self::get_conn()) && $conn->isActive();
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::is_active instead
+	 */
 	public static function isActive() {
-		return ($conn = self::getConn()) && $conn->isActive();
+		Deprecation::notice('3.2', 'Use DB::is_active instead');
+		return self::is_active();
 	}
 
 	/**
@@ -344,8 +388,16 @@ class DB {
 	 * @param string $database Name of database to create
 	 * @return boolean Returns true if successful
 	 */
+	public static function create_database($database) {
+		return self::get_conn()->selectDatabase($database, true);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::create_database instead
+	 */
 	public static function createDatabase($database) {
-		return self::getConn()->selectDatabase($database, true);
+		Deprecation::notice('3.2', 'Use DB::create_database instead');
+		return self::create_database($database);
 	}
 
 	/**
@@ -358,8 +410,16 @@ class DB {
 	 *   - 'temporary' - If true, then a temporary table will be created
 	 * @return string The table name generated.  This may be different from the table name, for example with temporary tables.
 	 */
+	public static function create_table($table, $fields = null, $indexes = null, $options = null, $advancedOptions = null) {
+		return self::get_schema()->createTable($table, $fields, $indexes, $options, $advancedOptions);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::create_table instead
+	 */
 	public static function createTable($table, $fields = null, $indexes = null, $options = null) {
-		return self::getSchema()->createTable($table, $fields, $indexes, $options);
+		Deprecation::notice('3.2', 'Use DB::create_table instead');
+		return self::create_table($table, $fields, $indexes, $options);
 	}
 
 	/**
@@ -368,8 +428,16 @@ class DB {
 	 * @param string $field Name of the field to add.
 	 * @param string $spec The field specification, eg 'INTEGER NOT NULL'
 	 */
+	public static function create_field($table, $field, $spec) {
+		return self::get_schema()->createField($table, $field, $spec);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::create_field instead
+	 */
 	public static function createField($table, $field, $spec) {
-		return self::getSchema()->createField($table, $field, $spec);
+		Deprecation::notice('3.2', 'Use DB::create_field instead');
+		return self::create_field($table, $field, $spec);
 	}
 
 	/**
@@ -387,8 +455,16 @@ class DB {
 	 * @param string $options SQL statement to append to the CREATE TABLE call.
 	 * @param array $extensions List of extensions
 	 */
-	public static function requireTable($table, $fieldSchema = null, $indexSchema = null, $hasAutoIncPK = true, $options = null, $extensions=null) {
-		return self::getSchema()->requireTable($table, $fieldSchema, $indexSchema, $hasAutoIncPK, $options, $extensions);
+	public static function require_table($table, $fieldSchema = null, $indexSchema = null, $hasAutoIncPK = true, $options = null, $extensions=null) {
+		return self::get_schema()->requireTable($table, $fieldSchema, $indexSchema, $hasAutoIncPK, $options, $extensions);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::require_table instead
+	 */
+	public static function requireTable($table, $fieldSchema = null, $indexSchema = null, $hasAutoIncPK = true, $options = null, $extensions = null) {
+		Deprecation::notice('3.2', 'Use DB::require_table instead');
+		return self::require_table($table, $fieldSchema, $indexSchema, $hasAutoIncPK, $options, $extensions);
 	}
 
 	/**
@@ -398,10 +474,18 @@ class DB {
 	 * @param string $field The field name.
 	 * @param string $spec The field specification.
 	 */
-	public static function requireField($table, $field, $spec) {
-		return self::getSchema()->requireField($table, $field, $spec);
+	public static function require_field($table, $field, $spec) {
+		return self::get_schema()->requireField($table, $field, $spec);
 	}
 
+	/**
+	 * @deprecated since version 3.2 Use DB::require_field instead
+	 */
+	public static function requireField($table, $field, $spec) {
+		Deprecation::notice('3.2', 'Use DB::require_field instead');
+		return self::require_field($table, $field, $spec);
+	}
+		
 	/**
 	 * Generate the given index in the database, modifying whatever already exists as necessary.
 	 * 
@@ -409,8 +493,16 @@ class DB {
 	 * @param string $index The index name.
 	 * @param string|boolean $spec The specification of the index. See requireTable() for more information.
 	 */
+	public static function require_index($table, $index, $spec) {
+		self::get_schema()->requireIndex($table, $index, $spec);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::require_index instead
+	 */
 	public static function requireIndex($table, $index, $spec) {
-		self::getSchema()->requireIndex($table, $index, $spec);
+		Deprecation::notice('3.2', 'Use DB::require_index instead');
+		self::require_index($table, $index, $spec);
 	}
 
 	/**
@@ -418,8 +510,16 @@ class DB {
 	 * 
 	 * @param string $table The table name.
 	 */
+	public static function dont_require_table($table) {
+		self::get_schema()->dontRequireTable($table);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::dont_require_table instead
+	 */
 	public static function dontRequireTable($table) {
-		self::getSchema()->dontRequireTable($table);
+		Deprecation::notice('3.2', 'Use DB::dont_require_table instead');
+		self::dont_require_table($table);
 	}
 	
 	/**
@@ -428,8 +528,16 @@ class DB {
 	 * @param string $table The table name.
 	 * @param string $fieldName The field name not to require
 	 */
+	public static function dont_require_field($table, $fieldName) {
+		self::get_schema()->dontRequireField($table, $fieldName);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::dont_require_field instead
+	 */
 	public static function dontRequireField($table, $fieldName) {
-		self::getSchema()->dontRequireField($table, $fieldName);
+		Deprecation::notice('3.2', 'Use DB::dont_require_field instead');
+		self::dont_require_field($table, $fieldName);
 	}
 
 	/**
@@ -438,8 +546,16 @@ class DB {
 	 * @param string $tableName The name of the table.
 	 * @return boolean Return true if the table has integrity after the method is complete.
 	 */
+	public static function check_and_repair_table($table) {
+		return self::get_schema()->checkAndRepairTable($table);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::check_and_repair_table instead
+	 */
 	public static function checkAndRepairTable($table) {
-		return self::getSchema()->checkAndRepairTable($table);
+		Deprecation::notice('3.2', 'Use DB::check_and_repair_table instead');
+		self::check_and_repair_table($table);
 	}
 
 	/**
@@ -447,8 +563,16 @@ class DB {
 	 * 
 	 * @return integer The number of affected rows
 	 */
+	public static function affected_rows() {
+		return self::get_conn()->affectedRows();
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::affected_rows instead
+	 */
 	public static function affectedRows() {
-		return self::getConn()->affectedRows();
+		Deprecation::notice('3.2', 'Use DB::affected_rows instead');
+		return self::affected_rows();
 	}
 
 	/**
@@ -457,8 +581,16 @@ class DB {
 	 * 
 	 * @return array The list of tables
 	 */
+	public static function table_list() {
+		return self::get_schema()->tableList();
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::table_list instead
+	 */
 	public static function tableList() {
-		return self::getSchema()->tableList();
+		Deprecation::notice('3.2', 'Use DB::table_list instead');
+		return self::table_list();
 	}
 	
 	/**
@@ -468,15 +600,23 @@ class DB {
 	 * @param string $table The table name.
 	 * @return array The list of fields
 	 */
+	public static function field_list($table) {
+		return self::get_schema()->fieldList($table);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::field_list instead
+	 */
 	public static function fieldList($table) {
-		return self::getSchema()->fieldList($table);
+		Deprecation::notice('3.2', 'Use DB::field_list instead');
+		return self::field_list($table);
 	}
 
 	/**
 	 * Enable supression of database messages.
 	 */
 	public static function quiet() {
-		self::getSchema()->quiet();
+		self::get_schema()->quiet();
 	}
 	
 	/**
@@ -486,7 +626,7 @@ class DB {
 	 * @param string $type one of [created|changed|repaired|obsolete|deleted|error]
 	 */
 	public static function alteration_message($message, $type = "") {
-		self::getSchema()->alterationMessage($message, $type);
+		self::get_schema()->alterationMessage($message, $type);
 	}
 	
 }

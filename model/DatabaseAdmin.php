@@ -155,7 +155,7 @@ class DatabaseAdmin extends Controller {
 		if($quiet) {
 			DB::quiet();
 		} else {
-			$conn = DB::getConn();
+			$conn = DB::get_conn();
 			// Assumes database class is like "MySQLDatabase" or "MSSQLDatabase" (suffixed with "Database")
 			$dbType = substr(get_class($conn), 0, -8);
 			$dbVersion = $conn->getVersion();
@@ -169,7 +169,7 @@ class DatabaseAdmin extends Controller {
 		}
 
 		// Set up the initial database
-		if(!DB::isActive()) {
+		if(!DB::is_active()) {
 			if(!$quiet) {
 				echo '<p><b>Creating database</b></p>';
 			}
@@ -190,7 +190,7 @@ class DatabaseAdmin extends Controller {
 			// Establish connection and create database in two steps
 			unset($parameters['database']);
 			DB::connect($parameters);
-			DB::createDatabase($database);
+			DB::create_database($database);
 		}
 
 		// Build the database.  Most of the hard work is handled by DataObject
@@ -203,7 +203,7 @@ class DatabaseAdmin extends Controller {
 		}
 
 		// Initiate schema update
-		$dbSchema = DB::getConn()->getSchemaManager();
+		$dbSchema = DB::get_schema();
 		$dbSchema->schemaUpdate(function() use($dataClasses, $testMode, $quiet){
 			foreach($dataClasses as $dataClass) {
 				// Check if class exists before trying to instantiate - this sidesteps any manifest weirdness
@@ -260,11 +260,12 @@ class DatabaseAdmin extends Controller {
 	
 	/**
 	 * Clear all data out of the database
-	 * @deprecated since version 3.1
+	 * 
+	 * @deprecated since version 3.2
 	 */
 	public function clearAllData() {
-		Deprecation::notice('3.1', 'Use DB::getConn()->clearAllData() instead');
-		DB::getConn()->clearAllData();
+		Deprecation::notice('3.2', 'Use DB::get_conn()->clearAllData() instead');
+		DB::get_conn()->clearAllData();
 	}
 
 	/**
@@ -315,5 +316,3 @@ class DatabaseAdmin extends Controller {
 	}
 
 }
-
-

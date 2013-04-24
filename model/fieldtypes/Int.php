@@ -29,7 +29,7 @@ class Int extends DBField {
 			'arrayValue'=>$this->arrayValue);
 		
 		$values=Array('type'=>'int', 'parts'=>$parts);
-		DB::requireField($this->tableName, $this->name, $values);
+		DB::require_field($this->tableName, $this->name, $values);
 	}
 
 	public function Times() {

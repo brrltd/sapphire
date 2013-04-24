@@ -57,7 +57,7 @@ class CheckboxSetFieldTest extends SapphireTest {
 		$field->saveInto($article);
 		
 		$this->assertNull(
-			DB::preparedQuery("SELECT * 
+			DB::prepared_query("SELECT * 
 				FROM \"CheckboxSetFieldTest_Article_Tags\"
 				WHERE \"CheckboxSetFieldTest_Article_Tags\".\"CheckboxSetFieldTest_ArticleID\" = ?", array($article->ID)
 			)->value(),
@@ -83,7 +83,7 @@ class CheckboxSetFieldTest extends SapphireTest {
 		
 		$this->assertEquals(
 			array($tag1->ID,$tag2->ID), 
-			DB::preparedQuery("SELECT \"CheckboxSetFieldTest_TagID\"
+			DB::prepared_query("SELECT \"CheckboxSetFieldTest_TagID\"
 				FROM \"CheckboxSetFieldTest_Article_Tags\"
 				WHERE \"CheckboxSetFieldTest_Article_Tags\".\"CheckboxSetFieldTest_ArticleID\" = ?", array($article->ID)
 			)->column(),

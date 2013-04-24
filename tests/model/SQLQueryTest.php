@@ -71,8 +71,8 @@ class SQLQueryTest extends SapphireTest {
 	}
 	
 	public function testSelectWithLimitClause() {
-		if(!(DB::getConn() instanceof MySQLDatabase || DB::getConn() instanceof SQLite3Database 
-				|| DB::getConn() instanceof PostgreSQLDatabase)) {
+		if(!(DB::get_conn() instanceof MySQLDatabase || DB::get_conn() instanceof SQLite3Database 
+				|| DB::get_conn() instanceof PostgreSQLDatabase)) {
 			$this->markTestIncomplete();
 		}
 
@@ -303,12 +303,12 @@ class SQLQueryTest extends SapphireTest {
 		$query->setFrom('MyTable');
 
 		$query->setWhereAny(array(
-            'Monkey' => 'Chimp',
-            'Color' => 'Brown'
-        ));
-        $sql = $query->sql($parameters);
+			'Monkey' => 'Chimp',
+			'Color' => 'Brown'
+		));
+		$sql = $query->sql($parameters);
 		$this->assertSQLEquals("SELECT * FROM MyTable WHERE ((Monkey = ?) OR (Color = ?))", $sql);
-        $this->assertEquals(array('Chimp', 'Brown'), $parameters);
+		$this->assertEquals(array('Chimp', 'Brown'), $parameters);
 	}
 	
 	public function testSelectFirst() {

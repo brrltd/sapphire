@@ -22,7 +22,7 @@ class DBFieldTest extends SapphireTest {
 	 * Test the prepValueForDB() method on DBField.
 	 */
 	public function testPrepValueForDB() {
-		$db = DB::getConn();
+		$db = DB::get_conn();
 
 		/* Float behaviour, asserting we have 0 */
 		$this->assertEquals(0, singleton('Float')->prepValueForDB(0));
@@ -77,9 +77,9 @@ class DBFieldTest extends SapphireTest {
 		$this->assertEquals(true, singleton('Boolean')->prepValueForDB('t'));
 		$this->assertEquals(true, singleton('Boolean')->prepValueForDB(1));
 		$this->assertEquals(true, singleton('Boolean')->prepValueForDB('1'));
-		
-        // @todo - Revisit Varchar to evaluate correct behaviour of nullifyEmpty
-        
+
+		// @todo - Revisit Varchar to evaluate correct behaviour of nullifyEmpty
+
 		/* Varchar behaviour */
 		$this->assertEquals(0, singleton('Varchar')->prepValueForDB(0));
 		$this->assertEquals(null, singleton('Varchar')->prepValueForDB(null));

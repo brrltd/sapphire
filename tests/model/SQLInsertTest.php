@@ -27,12 +27,12 @@ class SQLInsertTest extends SapphireTest {
 				->assign('"Description"', 'No description');
 		$sql = $query->sql($parameters);
 		// Only test this case if using the default query builder
-		if(get_class(DB::getConn()->getQueryBuilder()) === 'DBQueryBuilder') {
+		if(get_class(DB::get_conn()->getQueryBuilder()) === 'DBQueryBuilder') {
 			$this->assertSQLEquals('INSERT INTO "SQLInsertTestBase" ("Title", "HasFun", "Age", "Description") VALUES (?, ?, ?, ?)', $sql);
 		}
 		$this->assertEquals(array('My Object', 1, 10, 'No description'), $parameters);
 		$query->execute();
-		$this->assertEquals(1, DB::affectedRows());
+		$this->assertEquals(1, DB::affected_rows());
 		
 		// Check inserted object is correct
 		$firstObject = DataObject::get_one('SQLInsertTestBase', array('"Title"' => 'My Object'), false);
@@ -56,12 +56,12 @@ class SQLInsertTest extends SapphireTest {
 		));
 		$sql = $query->sql($parameters);
 		// Only test this case if using the default query builder
-		if(get_class(DB::getConn()->getQueryBuilder()) === 'DBQueryBuilder') {
+		if(get_class(DB::get_conn()->getQueryBuilder()) === 'DBQueryBuilder') {
 			$this->assertSQLEquals('INSERT INTO "SQLInsertTestBase" ("Title", "Age", "Description") VALUES (?, ?, ?), (?, ?, ?)', $sql);
 		}
 		$this->assertEquals(array('First Object', 10, 'First the worst', 'Second object', 12, null), $parameters);
 		$query->execute();
-		$this->assertEquals(2, DB::affectedRows());
+		$this->assertEquals(2, DB::affected_rows());
 		
 		// Check inserted objects are correct
 		$firstObject = DataObject::get_one('SQLInsertTestBase', array('"Title"' => 'First Object'), false);

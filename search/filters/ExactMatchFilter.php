@@ -31,7 +31,7 @@ class ExactMatchFilter extends SearchFilter {
 	 */
 	protected function applyOne(DataQuery $query) {
 		$this->model = $query->applyRelation($this->relation);
-		$where = DB::getConn()->comparisonClause(
+		$where = DB::get_conn()->comparisonClause(
 			$this->getDbName(),
 			null,
 			true, // exact?
@@ -52,7 +52,7 @@ class ExactMatchFilter extends SearchFilter {
 		$this->model = $query->applyRelation($this->relation);
 		$whereClause = array();
 		foreach($this->getValue() as $value) {
-			$predicate = DB::getConn()->comparisonClause(
+			$predicate = DB::get_conn()->comparisonClause(
 				$this->getDbName(),
 				null,
 				true, // exact?
@@ -72,7 +72,7 @@ class ExactMatchFilter extends SearchFilter {
 	 */
 	protected function excludeOne(DataQuery $query) {
 		$this->model = $query->applyRelation($this->relation);
-		$where = DB::getConn()->comparisonClause(
+		$where = DB::get_conn()->comparisonClause(
 			$this->getDbName(),
 			null,
 			true, // exact?
@@ -94,7 +94,7 @@ class ExactMatchFilter extends SearchFilter {
 		$predicates = array();
 		$parameters = array();
 		foreach($this->getValue() as $value) {
-			$predicates[] = DB::getConn()->comparisonClause(
+			$predicates[] = DB::get_conn()->comparisonClause(
 				$this->getDbName(),
 				null,
 				true, // exact?

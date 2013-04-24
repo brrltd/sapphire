@@ -2,15 +2,20 @@
 name: databaseconnectors
 ---
 Injector:
-  MySQLDatabase:
+  MySQLPDODatabase:
     class: 'MySQLDatabase'
     properties:
       connector: %$PDOConnector
       schemaManager: %$MySQLSchemaManager
       queryBuilder: %$DBQueryBuilder
-  MySQLiDatabase:
+  MySQLDatabase:
     class: 'MySQLDatabase'
     properties:
       connector: %$MySQLiConnector
       schemaManager: %$MySQLSchemaManager
       queryBuilder: %$DBQueryBuilder
+---
+name: querybuilder
+---
+DBQueryBuilder:
+  format: dev,test

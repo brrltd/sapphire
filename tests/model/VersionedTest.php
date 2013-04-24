@@ -201,12 +201,12 @@ class VersionedTest extends SapphireTest {
 		
 		$live = Versioned::get_by_stage('VersionedTest_DataObject', 'Live', array(
 			'"VersionedTest_DataObject_Live"."ID"' => $page->ID
-        ));
+		));
 		$this->assertEquals(0, $live->count());
 		
 		$stage = Versioned::get_by_stage('VersionedTest_DataObject', 'Stage',array(
 			'"VersionedTest_DataObject"."ID"' => $page->ID
-        ));
+		));
 		$this->assertEquals(1, $stage->count());
 		$this->assertEquals($stage->First()->Title, 'testWritingNewToStage');
 		
@@ -230,13 +230,13 @@ class VersionedTest extends SapphireTest {
 		
 		$live = Versioned::get_by_stage('VersionedTest_DataObject', 'Live',array(
 			'"VersionedTest_DataObject_Live"."ID"' => $page->ID
-        ));
+		));
 		$this->assertEquals(1, $live->count());
 		$this->assertEquals($live->First()->Title, 'testWritingNewToLive');
 		
 		$stage = Versioned::get_by_stage('VersionedTest_DataObject', 'Stage',array(
 			'"VersionedTest_DataObject"."ID"' => $page->ID
-        ));
+		));
 		$this->assertEquals(0, $stage->count());
 		
 		Versioned::reading_stage($origStage);

@@ -609,14 +609,12 @@ class Hierarchy extends DataExtension {
 	 */
 	public function stageChildren($showAll = false) {
 		$baseClass = ClassInfo::baseDataClass($this->owner->class);
-		$staged = DataObject::get($baseClass)->where(array(
-			"\"{$baseClass}\".\"ParentID\" = ?" => $this->owner->ID,
-			"\"{$baseClass}\".\"ID\" != ?" => $this->owner->ID
-		));
-		if(!$showAll && $this->owner->db('ShowInMenus')) {
-			$staged = $staged->where(array('"ShowInMenus"' => 1));
-		}
-		
+		$staged = $baseClass::get()
+			->filter('ParentID', (int)$this->owner->ID)
+			->exclude('ID', (int)$this->owner->ID);
+		if (!$showAll && $this->owner->db('ShowInMenus')) {
+			$staged = $staged->filter('ShowInMenus', 1);
+		}	
 		$this->owner->extend("augmentStageChildren", $staged, $showAll);
 		return $staged;
 	}
@@ -635,21 +633,15 @@ class Hierarchy extends DataExtension {
 		}
 
 		$baseClass = ClassInfo::baseDataClass($this->owner->class);
-		$id = $this->owner->ID;
-		
-		$children = DataObject::get($baseClass)
-			->where(array(
-				"\"{$baseClass}\".\"ParentID\" = ?" => $id,
-				"\"{$baseClass}\".\"ID\" != ?" => $id
-			))
+		$children = $baseClass::get()
+			->filter('ParentID', (int)$this->owner->ID)
+			->exclude('ID', (int)$this->owner->ID)
 			->setDataQueryParam(array(
 				'Versioned.mode' => $onlyDeletedFromStage ? 'stage_unique' : 'stage',
 				'Versioned.stage' => 'Live'
 			));
 
-		if(!$showAll) {
-			$children = $children->where(array('"ShowInMenus"' => 1));
-		}
+		if(!$showAll) $children = $children->filter('ShowInMenus', 1);
 
 		return $children;
 	}
@@ -730,11 +722,11 @@ class Hierarchy extends DataExtension {
 		$nextNode = null;
 		$baseClass = ClassInfo::baseDataClass($this->owner->class);
 		
-		$children = DataObject::get(ClassInfo::baseDataClass($this->owner->class))
-				->where(array("\"$baseClass\".\"ParentID\" = ?" => $this->owner->ID))
-				->sort('"Sort" ASC');
-		if($afterNode) {
-			$children = $children->where(array('"Sort" > ?' => $afterNode->Sort));
+		$children = $baseClass::get()
+			->filter('ParentID', (int)$this->owner->ID)
+			->sort('Sort', 'ASC');
+		if ($afterNode) {
+			$children = $children->filter('Sort:GreaterThan', $afterNode->Sort);
 		}
 		
 		// Try all the siblings of this node after the given node
@@ -779,4 +771,3 @@ class Hierarchy extends DataExtension {
 	}
 
 }
-

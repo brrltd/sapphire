@@ -399,7 +399,7 @@ class TreeDropdownField extends FormField {
 			}
 			while (!empty($parents)) {
 				$idsClause = DB::placeholders($parents);
-				$res = DB::preparedQuery(
+				$res = DB::prepared_query(
 					"SELECT \"ParentID\", \"ID\" FROM \"{$this->sourceObject}\" WHERE \"ID\" in ($idsClause)",
 					array_keys($parents)
 				);

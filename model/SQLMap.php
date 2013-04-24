@@ -3,7 +3,6 @@
  * This is a class used to represent key->value pairs generated from database queries.
  * The query isn't actually executed until you need it.
  * 
- * @deprecated since version 3.0
  * @package framework
  * @subpackage model
  */
@@ -17,8 +16,6 @@ class SQLMap extends Object implements IteratorAggregate {
 	
 	/**
 	 * Construct a SQLMap.
-	 * 
-	 * @deprecated since version 3.0
 	 * 
 	 * @param SQLSelect $query The query to generate this map. THis isn't executed until it's needed.
 	 */

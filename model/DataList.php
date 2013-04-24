@@ -174,16 +174,21 @@ class DataList extends ViewableData implements SS_List, SS_Filterable, SS_Sortab
 	 * @param array $parameters Out variable for parameters required for this query
 	 * @param string The resulting SQL query (may be paramaterised)
 	 */
-	public function sql(&$parameters) {
+	public function sql(&$parameters = array()) {
+		if(func_num_args() == 0) {
+			Deprecation::notice('3.2', 'DataList::sql() now may produce parameters which are necessary to execute this query');
+		}
 		return $this->dataQuery->query()->sql($parameters);
 	}
 	
 	/**
 	 * Return a new DataList instance with a WHERE clause added to this list's query.
 	 * 
-	 * Supports parameterised queries. See SQLSelect::addWhere() for syntax examples.
+	 * Supports parameterised queries.
+	 * See SQLSelect::addWhere() for syntax examples, although DataList
+	 * won't expand multiple method arguments as SQLSelect does.
 	 *
-	 * @param string $filter Escaped SQL statement
+	 * @param string|array|SQLConditionGroup $filter Predicate(s) to set, as escaped SQL statements or paramaterised queries
 	 * @return DataList
 	 */
 	public function where($filter) {
@@ -196,9 +201,11 @@ class DataList extends ViewableData implements SS_List, SS_Filterable, SS_Sortab
 	 * Return a new DataList instance with a WHERE clause added to this list's query.
 	 * All conditions provided in the filter will be joined with an OR
 	 * 
-	 * Supports parameterised queries. See SQLSelect::addWhere() for syntax examples.
+	 * Supports parameterised queries.
+	 * See SQLSelect::addWhere() for syntax examples, although DataList
+	 * won't expand multiple method arguments as SQLSelect does.
 	 *
-	 * @param string $filter Escaped SQL statement
+	 * @param string|array|SQLConditionGroup $filter Predicate(s) to set, as escaped SQL statements or paramaterised queries
 	 * @return DataList
 	 */
 	public function whereAny($filter) {
@@ -331,7 +338,7 @@ class DataList extends ViewableData implements SS_List, SS_Filterable, SS_Sortab
 	 *
 	 * @todo extract the sql from $customQuery into a SQLGenerator class
 	 *
-	 * @param string|array Escaped SQL statement. If passed as array, all keys and values are assumed to be escaped.
+	 * @param string|array Escaped SQL statement. If passed as array, all keys and values will be escaped internally
 	 * @return DataList
 	 */
 	public function filter() {
@@ -508,7 +515,7 @@ class DataList extends ViewableData implements SS_List, SS_Filterable, SS_Sortab
 	 *
 	 * @todo extract the sql from this method into a SQLGenerator class
 	 *
-	 * @param string|array Escaped SQL statement. If passed as array, all keys and values are assumed to be escaped.
+	 * @param string|array Escaped SQL statement. If passed as array, all keys and values will be escaped internally
 	 * @return DataList
 	 */
 	public function exclude() {
@@ -784,8 +791,6 @@ class DataList extends ViewableData implements SS_List, SS_Filterable, SS_Sortab
 
 	/**
 	 * Get a sub-range of this dataobjectset as an array
-	 * 
-	 * @deprecated since version 3.0
 	 *
 	 * @param int $offset
 	 * @param int $length

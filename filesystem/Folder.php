@@ -84,22 +84,22 @@ class Folder extends File {
 		$deleted = 0;
 
 		// First, merge any children that are duplicates
-		$duplicateChildrenNames = DB::preparedQuery(
+		$duplicateChildrenNames = DB::prepared_query(
 			'SELECT "Name" FROM "File" WHERE "ParentID" = ? GROUP BY "Name" HAVING count(*) > 1',
 			array($parentID)
 		)->column();
 		if($duplicateChildrenNames) foreach($duplicateChildrenNames as $childName) {
 			// Note, we do this in the database rather than object-model; otherwise we get all sorts of problems
 			// about deleting files
-			$children = DB::preparedQuery(
+			$children = DB::prepared_query(
 				'SELECT "ID" FROM "File" WHERE "Name" = ? AND "ParentID" = ?', 
 				array($childName, $parentID)
 			)->column();
 			if($children) {
 				$keptChild = array_shift($children);
 				foreach($children as $removedChild) {
-					DB::preparedQuery('UPDATE "File" SET "ParentID" = ? WHERE "ParentID" = ?', array($keptChild, $removedChild));
-					DB::preparedQuery('DELETE FROM "File" WHERE "ID" = ?', array($removedChild));
+					DB::prepared_query('UPDATE "File" SET "ParentID" = ? WHERE "ParentID" = ?', array($keptChild, $removedChild));
+					DB::prepared_query('DELETE FROM "File" WHERE "ID" = ?', array($removedChild));
 				}
 			} else {
 				user_error("Inconsistent database issue: SELECT ID FROM \"File\" WHERE Name = '$childName'"
@@ -110,7 +110,7 @@ class Folder extends File {
 		
 		// Get index of database content
 		// We don't use DataObject so that things like subsites doesn't muck with this.
-		$dbChildren = DB::preparedQuery('SELECT * FROM "File" WHERE "ParentID" = ?', array($parentID));
+		$dbChildren = DB::prepared_query('SELECT * FROM "File" WHERE "ParentID" = ?', array($parentID));
 		$hasDbChild = array();
 		if($dbChildren) {
 			foreach($dbChildren as $dbChild) {
@@ -146,7 +146,7 @@ class Folder extends File {
 					$child = $hasDbChild[$actualChild];
 					if(( !( $child instanceof Folder ) && is_dir($baseDir . $actualChild) ) 
 					|| (( $child instanceof Folder ) && !is_dir($baseDir . $actualChild)) ) {
-						DB::preparedQuery('DELETE FROM "File" WHERE "ID" = ?', array($child->ID));
+						DB::prepared_query('DELETE FROM "File" WHERE "ID" = ?', array($child->ID));
 						unset($hasDbChild[$actualChild]);						
 					}
 				}
@@ -174,11 +174,11 @@ class Folder extends File {
 			
 			// Iterate through the unwanted children, removing them all
 			if(isset($unwantedDbChildren)) foreach($unwantedDbChildren as $unwantedDbChild) {
-				DB::preparedQuery('DELETE FROM "File" WHERE "ID" = ?', array($unwantedDbChild->ID));
+				DB::prepared_query('DELETE FROM "File" WHERE "ID" = ?', array($unwantedDbChild->ID));
 				$deleted++;
 			}
 		} else {
-			DB::preparedQuery('DELETE FROM "File" WHERE "ID" = ?', array($this->ID));
+			DB::prepared_query('DELETE FROM "File" WHERE "ID" = ?', array($this->ID));
 		}
 		
 		return array('added' => $added, 'deleted' => $deleted);
@@ -206,14 +206,14 @@ class Folder extends File {
 		$filename = $this->Filename . $name;
 		if($className == 'Folder' ) $filename .= '/';
 		
-		$nowExpression = DB::getConn()->now();
-		DB::preparedQuery("INSERT INTO \"File\" 
+		$nowExpression = DB::get_conn()->now();
+		DB::prepared_query("INSERT INTO \"File\" 
 			(\"ClassName\", \"ParentID\", \"OwnerID\", \"Name\", \"Filename\", \"Created\", \"LastEdited\", \"Title\")
 			VALUES (?, ?, ?, ?, ?, $nowExpression, $nowExpression, ?)",
 			array($className, $this->ID, $ownerID, $name, $filename, $name)
 		);
 			
-		return DB::getGeneratedID("File");
+		return DB::get_generated_id("File");
 	}
 
 	/**
@@ -368,7 +368,7 @@ class Folder extends File {
 	 * Returns true if this folder has children
 	 */
 	public function hasChildren() {
-		$result = DB::preparedQuery(
+		$result = DB::prepared_query(
 			'SELECT COUNT(*) FROM "File" WHERE ParentID = ?',
 			array($this->ID)
 		)->value();
@@ -381,7 +381,7 @@ class Folder extends File {
 	public function hasChildFolders() {
 		$subclasses = ClassInfo::subclassesFor('Folder');
 		$subclassesPlaceholders = DB::placeholders($subclasses);
-		return (bool)DB::preparedQuery(
+		return (bool)DB::prepared_query(
 			"SELECT COUNT(*) FROM \"File\" WHERE \"ParentID\" = ? AND \"ClassName\" IN ($subclassesPlaceholders)",
 			array_merge(array($this->ID), $subclasses)
 		)->value();

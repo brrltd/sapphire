@@ -932,7 +932,7 @@ class LeftAndMain extends Controller implements PermissionProvider {
 		if(substr($id,0,3) != 'new') {
 			$record = DataObject::get_by_id($className, $id);
 			if($record && !$record->canEdit()) return Security::permissionFailure($this);
-			if(!$record || !$record->ID) throw new HTTPResponse_Exception("Bad record ID #$id", 404);
+			if(!$record || !$record->ID) throw new SS_HTTPResponse_Exception("Bad record ID #$id", 404);
 		} else {
 			if(!singleton($this->stat('tree_class'))->canCreate()) return Security::permissionFailure($this);
 			$record = $this->getNewItem($id, false);
@@ -954,7 +954,7 @@ class LeftAndMain extends Controller implements PermissionProvider {
 		$id = $data['ID'];
 		$record = DataObject::get_by_id($className, $id);
 		if($record && !$record->canDelete()) return Security::permissionFailure();
-		if(!$record || !$record->ID) throw new HTTPResponse_Exception("Bad record ID #$id", 404);
+		if(!$record || !$record->ID) throw new SS_HTTPResponse_Exception("Bad record ID #$id", 404);
 		
 		$record->delete();
 
@@ -1061,7 +1061,7 @@ class LeftAndMain extends Controller implements PermissionProvider {
 					// Nodes that weren't "actually moved" shouldn't be registered as 
 					// having been edited; do a direct SQL update instead
 					++$counter;
-					DB::preparedQuery(
+					DB::prepared_query(
 						"UPDATE \"$className\" SET \"Sort\" = ? WHERE \"ID\" = ?",
 						array($counter, $id)
 					);
@@ -1731,7 +1731,7 @@ class LeftAndMainMarkingFilter {
 		// finding ParentIDs for each ID until we run out of parents
 		while (!empty($parents)) {
 			$parentsClause = DB::placeholders($parents);
-			$res = DB::preparedQuery(
+			$res = DB::prepared_query(
 				"SELECT \"ParentID\", \"ID\" FROM \"SiteTree\" WHERE \"ID\" in ($parentsClause)",
 				array_keys($parents)
 			);

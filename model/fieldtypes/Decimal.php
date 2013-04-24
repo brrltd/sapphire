@@ -53,7 +53,7 @@ class Decimal extends DBField {
 			'parts' => $parts
 		);
 
-		DB::requireField($this->tableName, $this->name, $values);
+		DB::require_field($this->tableName, $this->name, $values);
 	}
 	
 	/**

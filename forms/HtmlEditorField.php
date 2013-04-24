@@ -181,7 +181,7 @@ class HtmlEditorField extends TextareaField {
 
 				if($linkedPages) foreach($linkedPages as $item) {
 					$fieldName = $this->name;
-					DB::preparedQuery(
+					DB::prepared_query(
 						'INSERT INTO "SiteTree_LinkTracking" ("SiteTreeID", "ChildID", "FieldName") VALUES (?, ?, ?)',
 						array($record->ID, $item, $fieldName)
 					);

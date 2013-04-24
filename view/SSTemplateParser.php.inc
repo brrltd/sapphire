@@ -801,8 +801,7 @@ class SSTemplateParser extends Parser {
 
 	/**
 	 * The deprecated closed block handler for control blocks
-	 * 
-	 * @deprecated since version 3.1
+	 * @deprecated
 	 */
 	function ClosedBlock_Handle_Control(&$res) {
 		Deprecation::notice('3.1', '<% control %> is deprecated. Use <% with %> or <% loop %> instead.');

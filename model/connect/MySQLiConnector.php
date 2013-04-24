@@ -101,16 +101,14 @@ class MySQLiConnector extends DBConnector {
 		});
 
 		if (!$handle || $this->dbConn->error) {
-			if($errorLevel) {
-                $this->databaseError("Couldn't run query: $sql | " . $this->getLastError(), $errorLevel);
-            }
-            return null;
+			$this->databaseError($this->getLastError(), $errorLevel, $sql);
+			return null;
 		}
 
-        if($handle !== true) {
-            // Some non-select queries return true on success
-            return new MySQLQuery($this, $handle);
-        }
+		if($handle !== true) {
+			// Some non-select queries return true on success
+			return new MySQLQuery($this, $handle);
+		}
 	}
 	
 	/**
@@ -227,11 +225,8 @@ class MySQLiConnector extends DBConnector {
 		// check result
 		$this->setLastStatement($lastStatement);
 		if (!$lastStatement || $lastStatement->error) {
-			if($errorLevel) {
-				$values = $this->parameterValues($parameters);
-				$parametersError = empty($values) ? 'with no parameters' : "with parameters " . join(", ", $values);
-				$this->databaseError("Couldn't run query: $sql $parametersError | " . $this->getLastError(), $errorLevel);
-			}
+			$values = $this->parameterValues($parameters);
+			$this->databaseError($this->getLastError(), $errorLevel, $sql, $values);
 			return null;
 		}
 		

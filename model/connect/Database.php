@@ -203,7 +203,7 @@ abstract class SS_Database {
 			// Switch command type
 			switch ($writeInfo['command']) {
 				case "update":
-                    
+
 					// Build update
 					$query = new SQLUpdate("\"$table\"", $this->escapeColumnKeys($fieldValues));
 					
@@ -213,13 +213,13 @@ abstract class SS_Database {
 					} elseif(!empty($writeInfo['id'])) {
 						$query->addWhere(array('"ID"' => $writeInfo['id']));
 					}
-                    
-                    // Test to see if this update query shouldn't, in fact, be an insert
-                    if($query->toSelect()->count()) {
-                        $query->execute();
-                        break;
-                    }
-                    // ...if not, we'll skip on to the insert code
+
+					// Test to see if this update query shouldn't, in fact, be an insert
+					if($query->toSelect()->count()) {
+						$query->execute();
+						break;
+					}
+					// ...if not, we'll skip on to the insert code
 					
 				case "insert":
 					// Ensure that the ID clause is given if possible
@@ -244,15 +244,6 @@ abstract class SS_Database {
 	 */
 	public function quiet() {
 		$this->schemaManager->quiet();
-	}
-
-	/**
-	 * @deprecated since version 3.2 Use SS_Database->quoteString instead
-	 * @see SS_Database->quoteString
-	 */
-	public function prepStringForDB($string) {
-		Deprecation::notice('3.2', 'Use SS_Database->quoteString');
-		return $this->quoteString($string);
 	}
 
 	/**
@@ -546,6 +537,15 @@ abstract class SS_Database {
 	public function databaseExists($name) {
 		return $this->schemaManager->databaseExists($name);
 	}
+	
+	/**
+	 * Retrieves the list of all databases the user has access to
+	 * 
+	 * @return array List of database names
+	 */
+	public function databaseList() {
+		return $this->schemaManager->databaseList();
+	}
 
 	/**
 	 * Change the connection to the specified database, optionally creating the
@@ -578,7 +578,7 @@ abstract class SS_Database {
 	 * Drop the database that this object is currently connected to.
 	 * Use with caution.
 	 */
-	public function dropCurrentDatabase() {
+	public function dropSelectedDatabase() {
 		$databaseName = $this->connector->getSelectedDatabase();
 		if ($databaseName) {
 			$this->connector->unloadDatabase();
@@ -588,31 +588,13 @@ abstract class SS_Database {
 
 	/**
 	 * Returns the name of the currently selected database
+	 * 
 	 * @return string|null Name of the selected database, or null if none selected
 	 */
 	public function getSelectedDatabase() {
 		return $this->connector->getSelectedDatabase();
 	}
-
-	/**
-	 * @deprecated since version 3.2 Use SS_Database->getSelectedDatabase instead
-	 * @see SS_Database->getSelectedDatabase
-	 */
-	public function currentDatabase() {
-		Deprecation::notice('3.2', 'Use SS_Database->getSelectedDatabase');
-		return $this->getSelectedDatabase();
-	}
 	
-	/**
-	 * @deprecated since version 3.2 Use DBSchemaManager->fieldList instead
-	 * @see DBSchemaManager->fieldList
-	 */
-	public function fieldList($table) {
-		Deprecation::notice('3.2', 'Use DBSchemaManager->fieldList');
-		return $this->getSchemaManager()->fieldList($table);
-		
-	}
-
 	/**
 	 * Return SQL expression used to represent the current date/time
 	 * 
@@ -626,5 +608,281 @@ abstract class SS_Database {
 	 * @return string Expression for a random value
 	 */
 	abstract public function random();
+	
+	/**
+	 * @deprecated since version 3.2 Use selectDatabase('dbname', true) instead
+	 */
+	public function createDatabase() {
+		Deprecation::notice('3.2', 'Use selectDatabase(\'dbname\',true) instead');
+		$database = $this->connector->getSelectedDatabase();
+		$this->selectDatabase($database, true);
+		return $this->isActive();
+	}
+	
+	/**
+	 * @deprecated since version 3.2 SS_Database::getConnect was never implemented and is obsolete
+	 */
+	public function getConnect($parameters) {
+		Deprecation::notice('3.2', 'SS_Database::getConnect was never implemented and is obsolete');
+	}
 
+	/**
+	 * @deprecated since version 3.2 Use Convert::raw2sql($string, true) instead
+	 */
+	public function prepStringForDB($string) {
+		Deprecation::notice('3.2', 'Use Convert::raw2sql($string, true) instead');
+		return $this->quoteString($string);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use dropSelectedDatabase instead
+	 */
+	public function dropDatabase() {
+		Deprecation::notice('3.2', 'Use dropSelectedDatabase instead');
+		$this->dropSelectedDatabase();
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use databaseList instead
+	 */
+	public function allDatabaseNames() {
+		Deprecation::notice('3.2', 'Use databaseList instead');
+		return $this->databaseList();
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::create_table instead
+	 */
+	public function createTable($table, $fields = null, $indexes = null, $options = null, $advancedOptions = null) {
+		Deprecation::notice('3.2', 'Use DB::create_table instead');
+		return $this->getSchemaManager()->createTable($table, $fields, $indexes, $options, $advancedOptions);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::get_schema()->alterTable() instead
+	 */
+	public function alterTable($table, $newFields = null, $newIndexes = null, 
+		$alteredFields = null, $alteredIndexes = null, $alteredOptions = null,
+		$advancedOptions = null
+	) {
+		Deprecation::notice('3.2', 'Use DB::get_schema()->alterTable() instead');
+		return $this->getSchemaManager()->alterTable(
+			$table, $newFields, $newIndexes, $alteredFields,
+			$alteredIndexes, $alteredOptions, $advancedOptions
+		);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::get_schema()->renameTable() instead
+	 */
+	public function renameTable($oldTableName, $newTableName) {
+		Deprecation::notice('3.2', 'Use DB::get_schema()->renameTable() instead');
+		$this->getSchemaManager()->renameTable($oldTableName, $newTableName);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::create_field() instead
+	 */
+	public function createField($table, $field, $spec) {
+		Deprecation::notice('3.2', 'Use DB::create_field() instead');
+		$this->getSchemaManager()->createField($table, $field, $spec);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::get_schema()->renameField() instead
+	 */
+	public function renameField($tableName, $oldName, $newName) {
+		Deprecation::notice('3.2', 'Use DB::get_schema()->renameField() instead');
+		$this->getSchemaManager()->renameField($tableName, $oldName, $newName);
+	}
+
+	/**
+	 * @deprecated since version 3.2 Use getSelectedDatabase instead
+	 */
+	public function currentDatabase() {
+		Deprecation::notice('3.2', 'Use getSelectedDatabase instead');
+		return $this->getSelectedDatabase();
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::field_list instead
+	 */
+	public function fieldList($table) {
+		Deprecation::notice('3.2', 'Use DB::field_list instead');
+		return $this->getSchemaManager()->fieldList($table);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::table_list instead
+	 */
+	public function tableList() {
+		Deprecation::notice('3.2', 'Use DB::table_list instead');
+		return $this->getSchemaManager()->tableList();
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::get_schema()->hasTable() instead
+	 */
+	public function hasTable($tableName) {
+		Deprecation::notice('3.2', 'Use DB::get_schema()->hasTable() instead');
+		return $this->getSchemaManager()->hasTable($tableName);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::get_schema()->enumValuesForField() instead
+	 */
+	public function enumValuesForField($tableName, $fieldName) {
+		Deprecation::notice('3.2', 'Use DB::get_schema()->enumValuesForField() instead');
+		return $this->getSchemaManager()->enumValuesForField($tableName, $fieldName);
+	}
+
+	/**
+	 * @deprecated since version 3.2 Use Convert::raw2sql instead
+	 */
+	public function addslashes($value) {
+		Deprecation::notice('3.2', 'Use Convert::raw2sql instead');
+		return $this->escapeString($value);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::get_schema()->schemaUpdate with a callback instead
+	 */
+	public function beginSchemaUpdate() {
+		Deprecation::notice('3.2', 'Use DB::get_schema()->schemaUpdate with a callback instead');
+		// Unable to recover so throw appropriate exception
+		throw new BadMethodCallException('Use DB::get_schema()->schemaUpdate with a callback instead');
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::get_schema()->schemaUpdate with a callback instead
+	 */
+	public function endSchemaUpdate() {
+		Deprecation::notice('3.2', 'Use DB::get_schema()->schemaUpdate with a callback instead');
+		// Unable to recover so throw appropriate exception
+		throw new BadMethodCallException('Use DB::get_schema()->schemaUpdate with a callback instead');
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::get_schema()->cancelSchemaUpdate instead
+	 */
+	public function cancelSchemaUpdate() {
+		Deprecation::notice('3.2', 'Use DB::get_schema()->cancelSchemaUpdate instead');
+		$this->getSchemaManager()->cancelSchemaUpdate();
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::get_schema()->isSchemaUpdating() instead
+	 */
+	public function isSchemaUpdating() {
+		Deprecation::notice('3.2', 'Use DB::get_schema()->isSchemaUpdating() instead');
+		return $this->getSchemaManager()->isSchemaUpdating();
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::get_schema()->doesSchemaNeedUpdating() instead
+	 */
+	public function doesSchemaNeedUpdating() {
+		Deprecation::notice('3.2', 'Use DB::get_schema()->doesSchemaNeedUpdating() instead');
+		return $this->getSchemaManager()->doesSchemaNeedUpdating();
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::get_schema()->transCreateTable() instead
+	 */
+	public function transCreateTable($table, $options = null, $advanced_options = null) {
+		Deprecation::notice('3.2', 'Use DB::get_schema()->transCreateTable() instead');
+		$this->getSchemaManager()->transCreateTable($table, $options, $advanced_options);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::get_schema()->transAlterTable() instead
+	 */
+	public function transAlterTable($table, $options, $advanced_options) {
+		Deprecation::notice('3.2', 'Use DB::get_schema()->transAlterTable() instead');
+		$this->getSchemaManager()->transAlterTable($table, $index, $schema);
+	}
+
+	/**
+	 * @deprecated since version 3.2 Use DB::get_schema()->transCreateField() instead
+	 */
+	public function transCreateField($table, $field, $schema) {
+		Deprecation::notice('3.2', 'Use DB::get_schema()->transCreateField() instead');
+		$this->getSchemaManager()->transCreateField($table, $index, $schema);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::get_schema()->transCreateIndex() instead
+	 */
+	public function transCreateIndex($table, $index, $schema) {
+		Deprecation::notice('3.2', 'Use DB::get_schema()->transCreateIndex() instead');
+		$this->getSchemaManager()->transCreateIndex($table, $index, $schema);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::get_schema()->transAlterField() instead
+	 */
+	public function transAlterField($table, $field, $schema) {
+		Deprecation::notice('3.2', 'Use DB::get_schema()->transAlterField() instead');
+		$this->getSchemaManager()->transAlterField($table, $index, $schema);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::get_schema()->transAlterIndex() instead
+	 */
+	public function transAlterIndex($table, $index, $schema) {
+		Deprecation::notice('3.2', 'Use DB::get_schema()->transAlterIndex() instead');
+		$this->getSchemaManager()->transAlterIndex($table, $index, $schema);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::require_table() instead
+	 */
+	public function requireTable($table, $fieldSchema = null, $indexSchema = null,
+		$hasAutoIncPK = true, $options = array(), $extensions = false
+	) {
+		Deprecation::notice('3.2', 'Use DB::require_table() instead');
+		return $this->getSchemaManager()->requireTable(
+			$table, $fieldSchema, $indexSchema, $hasAutoIncPK, $options, $extensions
+		);
+	}
+
+	/**
+	 * @deprecated since version 3.2 Use DB::dont_require_table() instead
+	 */
+	public function dontRequireTable($table) {
+		Deprecation::notice('3.2', 'Use DB::dont_require_table() instead');
+		$this->getSchemaManager()->dontRequireTable($table);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::require_index() instead
+	 */
+	public function requireIndex($table, $index, $spec) {
+		Deprecation::notice('3.2', 'Use DB::require_index() instead');
+		$this->getSchemaManager()->requireIndex($table, $index, $spec);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::get_schema()->hasField() instead
+	 */
+	public function hasField($tableName, $fieldName) {
+		Deprecation::notice('3.2', 'Use DB::get_schema()->hasField() instead');
+		return $this->getSchemaManager()->hasField($tableName, $fieldName);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::require_field() instead
+	 */
+	public function requireField($table, $field, $spec) {
+		Deprecation::notice('3.2', 'Use DB::require_field() instead');
+		$this->getSchemaManager()->requireField($table, $field, $spec);
+	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::dont_require_field() instead
+	 */
+	public function dontRequireField($table, $fieldName) {
+		Deprecation::notice('3.2', 'Use DB::dont_require_field() instead');
+		$this->getSchemaManager()->dontRequireField($table, $fieldName);
+	}
 }

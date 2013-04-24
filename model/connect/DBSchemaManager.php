@@ -532,7 +532,7 @@ abstract class DBSchemaManager {
 
 	/**
 	 * Returns true if the given table is exists in the current database
-     * 
+	 * 
 	 * @param string $table Name of table to check
 	 * @return boolean Flag indicating existence of table
 	 */
@@ -540,7 +540,7 @@ abstract class DBSchemaManager {
 
 	/**
 	 * Return true if the table exists and already has a the field specified
-     * 
+	 * 
 	 * @param string $tableName - The table to check
 	 * @param string $fieldName - The field to check
 	 * @return bool - True if the table exists and the field exists on the table
@@ -553,7 +553,7 @@ abstract class DBSchemaManager {
 
 	/**
 	 * Generate the given field on the table, modifying whatever already exists as necessary.
-     * 
+	 * 
 	 * @param string $table The table name.
 	 * @param string $field The field name.
 	 * @param array|string $spec The field specification. If passed in array syntax, the specific database
@@ -736,9 +736,9 @@ abstract class DBSchemaManager {
 
 	/**
 	 * This returns the data type for the id column which is the primary key for each table
-     * 
-     * @param boolean $asDbValue
-     * @param boolean $hasAutoIncPK
+	 * 
+	 * @param boolean $asDbValue
+	 * @param boolean $hasAutoIncPK
 	 * @return string
 	 */
 	abstract public function IdColumn($asDbValue = false, $hasAutoIncPK = true);
@@ -753,7 +753,7 @@ abstract class DBSchemaManager {
 
 	/**
 	 * Returns the values of the given enum field
-     * 
+	 * 
 	 * @param string $tableName Name of table to check
 	 * @param string $fieldName name of enum field to check
 	 * @return array List of enum values
@@ -773,14 +773,14 @@ abstract class DBSchemaManager {
 
 	/**
 	 * Retrieves the list of all databases the user has access to
-     * 
+	 * 
 	 * @return array List of database names
 	 */
 	abstract public function databaseList();
 
 	/**
 	 * Determine if the database with the specified name exists
-     * 
+	 * 
 	 * @param string $name Name of the database to check for
 	 * @return boolean Flag indicating whether this database exists
 	 */
@@ -788,7 +788,7 @@ abstract class DBSchemaManager {
 
 	/**
 	 * Create a database with the specified name
-     * 
+	 * 
 	 * @param string $name Name of the database to create
 	 * @return boolean True if successful
 	 */
@@ -796,14 +796,14 @@ abstract class DBSchemaManager {
 
 	/**
 	 * Drops a database with the specified name
-     * 
+	 * 
 	 * @param string $name Name of the database to drop
 	 */
 	abstract public function dropDatabase($name);
 
 	/**
 	 * Alter an index on a table.
-     * 
+	 * 
 	 * @param string $tableName The name of the table.
 	 * @param string $indexName The name of the index.
 	 * @param string $indexSpec The specification of the index, see {@link SS_Database::requireIndex()}
@@ -839,14 +839,14 @@ abstract class DBSchemaManager {
 	 * Returns a list of all tables in the database.
 	 * Keys are table names in lower case, values are table names in case that
 	 * database expects.
-     * 
+	 * 
 	 * @return array
 	 */
 	abstract public function tableList();
 
 	/**
 	 * Create a new table.
-     * 
+	 * 
 	 * @param string $table The name of the table
 	 * @param array $fields A map of field names to field types
 	 * @param array $indexes A map of indexes
@@ -860,7 +860,7 @@ abstract class DBSchemaManager {
 
 	/**
 	 * Alter a table's schema.
-     * 
+	 * 
 	 * @param string $table The name of the table to alter
 	 * @param array $newFields New fields, a map of field name => field schema
 	 * @param array $newIndexes New indexes, a map of index name => index type
@@ -873,7 +873,7 @@ abstract class DBSchemaManager {
 
 	/**
 	 * Rename a table.
-     * 
+	 * 
 	 * @param string $oldTableName The old table name.
 	 * @param string $newTableName The new table name.
 	 */
@@ -881,7 +881,7 @@ abstract class DBSchemaManager {
 
 	/**
 	 * Create a new field on a table.
-     * 
+	 * 
 	 * @param string $table Name of the table.
 	 * @param string $field Name of the field to add.
 	 * @param string $spec The field specification, eg 'INTEGER NOT NULL'
@@ -907,14 +907,14 @@ abstract class DBSchemaManager {
 	abstract public function fieldList($table);
 
 	/**
-     *
-     * This allows the cached values for a table's field list to be erased.
-     * If $tablename is empty, then the whole cache is erased.
-     *
-     * @param string $tableName
-     *
-     * @return boolean
-     */
+	 *
+	 * This allows the cached values for a table's field list to be erased.
+	 * If $tablename is empty, then the whole cache is erased.
+	 *
+	 * @param string $tableName
+	 *
+	 * @return boolean
+	 */
 	public function clearCachedFieldlist($tableName = false) {
 		return true;
 	}

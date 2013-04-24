@@ -12,7 +12,7 @@ class DatabaseTest extends SapphireTest {
 	protected $usesDatabase = true;
 
 	public function testDontRequireField() {
-		$schema = DB::getSchema();
+		$schema = DB::get_schema();
 		$this->assertArrayHasKey(
 			'MyField',
 			$schema->fieldList('DatabaseTest_MyObject')
@@ -30,7 +30,7 @@ class DatabaseTest extends SapphireTest {
 	}
 
 	public function testRenameField() {
-		$schema = DB::getSchema();
+		$schema = DB::get_schema();
 
 		$schema->clearCachedFieldlist();
 
@@ -51,7 +51,7 @@ class DatabaseTest extends SapphireTest {
 	}
 
 	public function testMySQLCreateTableOptions() {
-		if(!(DB::getConn() instanceof MySQLDatabase)) {
+		if(!(DB::get_conn() instanceof MySQLDatabase)) {
 			$this->markTestSkipped('MySQL only');
 		}
 
@@ -66,7 +66,7 @@ class DatabaseTest extends SapphireTest {
 	}
 
 	function testIsSchemaUpdating() {
-		$schema = DB::getSchema();
+		$schema = DB::get_schema();
 
 		$this->assertFalse($schema->isSchemaUpdating(), 'Before the transaction the flag is false.');
 
@@ -85,7 +85,7 @@ class DatabaseTest extends SapphireTest {
 	}
 
 	public function testSchemaUpdateChecking() {
-		$schema = DB::getSchema();
+		$schema = DB::get_schema();
 
 		// Initially, no schema changes necessary
 		$test = $this;
@@ -103,12 +103,12 @@ class DatabaseTest extends SapphireTest {
 	}
 
 	public function testHasTable() {
-		$this->assertTrue(DB::getSchema()->hasTable('DatabaseTest_MyObject'));
-		$this->assertFalse(DB::getSchema()->hasTable('asdfasdfasdf'));
+		$this->assertTrue(DB::get_schema()->hasTable('DatabaseTest_MyObject'));
+		$this->assertFalse(DB::get_schema()->hasTable('asdfasdfasdf'));
 	}
 	
 	public function testGetAndReleaseLock() {
-		$db = DB::getConn();
+		$db = DB::get_conn();
 		
 		if(!$db->supportsLocks()) {
 			return $this->markTestSkipped('Tested database doesn\'t support application locks');
@@ -134,7 +134,7 @@ class DatabaseTest extends SapphireTest {
 	}
 	
 	public function testCanLock() {
-		$db = DB::getConn();
+		$db = DB::get_conn();
 		
 		if(!$db->supportsLocks()) {
 			return $this->markTestSkipped('Database doesn\'t support locks');

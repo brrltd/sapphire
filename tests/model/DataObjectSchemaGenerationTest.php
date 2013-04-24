@@ -19,7 +19,7 @@ class DataObjectSchemaGenerationTest extends SapphireTest {
 	 * Check that once a schema has been generated, then it doesn't need any more updating
 	 */
 	public function testFieldsDontRerequestChanges() {
-		$schema = DB::getSchema();
+		$schema = DB::get_schema();
 		$test = $this;
 		DB::quiet();
 
@@ -39,7 +39,7 @@ class DataObjectSchemaGenerationTest extends SapphireTest {
 	 * Check that updates to a class fields are reflected in the database
 	 */
 	public function testFieldsRequestChanges() {
-		$schema = DB::getSchema();
+		$schema = DB::get_schema();
 		$test = $this;
 		DB::quiet();
 
@@ -68,7 +68,7 @@ class DataObjectSchemaGenerationTest extends SapphireTest {
 	 * Check that indexes on a newly generated class do not subsequently request modification 
 	 */
 	public function testIndexesDontRerequestChanges() {
-		$schema = DB::getSchema();
+		$schema = DB::get_schema();
 		$test = $this;
 		DB::quiet();
 		
@@ -107,7 +107,7 @@ class DataObjectSchemaGenerationTest extends SapphireTest {
 	 * Check that updates to a dataobject's indexes are reflected in DDL
 	 */
 	public function testIndexesRerequestChanges() {
-		$schema = DB::getSchema();
+		$schema = DB::get_schema();
 		$test = $this;
 		DB::quiet();
 		

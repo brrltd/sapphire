@@ -34,7 +34,7 @@ class SQLUpdateTest extends SapphireTest {
 		
 		// Check affected rows
 		$query->execute();
-		$this->assertEquals(1, DB::affectedRows());
+		$this->assertEquals(1, DB::affected_rows());
 		
 		// Check item updated
 		$item = DataObject::get_one('SQLUpdateTestBase', array('"Title"' => 'Object 1'));

@@ -36,11 +36,11 @@ class ClassInfo {
 	 * @todo Move this to SS_Database or DB
 	 */
 	public static function hasTable($class) {
-		if(DB::isActive()) {
+		if(DB::is_active()) {
 			// Cache the list of all table names to reduce on DB traffic
 			if(empty(self::$_cache_all_tables)) {
 				self::$_cache_all_tables = array();
-				$tables = DB::getConn()->getSchemaManager()->tableList();
+				$tables = DB::get_schema()->tableList();
 				foreach($tables as $table) {
 					self::$_cache_all_tables[strtolower($table)] = true;
 				}
@@ -65,7 +65,7 @@ class ClassInfo {
 	 * @return array List of subclasses
 	 */
 	public static function getValidSubClasses($class = 'SiteTree', $includeUnbacked = false) {
-		$classes = DB::getSchema()->enumValuesForField($class, 'ClassName');
+		$classes = DB::get_schema()->enumValuesForField($class, 'ClassName');
 		if (!$includeUnbacked) $classes = array_filter($classes, array('ClassInfo', 'exists'));
 		return $classes;
 	}

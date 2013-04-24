@@ -17,25 +17,31 @@ abstract class DBConnector {
 	 * @todo hook this into a more well-structured error handling system.
 	 * @param string $msg The error message.
 	 * @param integer $errorLevel The level of the error to throw.
+	 * @param string $sql The SQL related to this query
+	 * @param array $parameters Parameters passed to the query
 	 */
-	protected function databaseError($msg, $errorLevel = E_USER_ERROR) {
-
-		// try to extract and format query
-		if (preg_match('/Couldn\'t run query: ([^\|]*)\|\s*(.*)/', $msg, $matches)) {
+	protected function databaseError($msg, $errorLevel = E_USER_ERROR, $sql = null, $parameters = array()) {
+		
+		// Prevent errors when error checking is set at zero level
+		if(empty($errorLevel)) return;
+		
+		// Format query if given
+		if (!empty($sql)) {
 			$formatter = new SQLFormatter();
-			$msg = "Couldn't run query: \n" . $formatter->formatPlain($matches[1]) . "\n\n" . $matches[2];
+			$formattedSQL = $formatter->formatPlain($sql);
+			$msg = "Couldn't run query:\n\n{$formattedSQL}\n\n{$msg}";
 		}
 		
 		if($errorLevel === E_USER_ERROR) {
 			// Treating errors as exceptions better allows for responding to errors
 			// in code, such as credential checking during installation
-			throw new Exception($msg);
+			throw new SS_DatabaseException($msg, 0, null, $sql, $parameters);
 		} else {
 			user_error($msg, $errorLevel);
 		}
 	}
 	
-	public static $write_operations = array('insert', 'update', 'delete', 'replace');
+	public static $write_operations = array('insert', 'update', 'delete', 'replace', 'alter', 'drop');
 
 	/**
 	 * Determines if the query should be previewed, and thus interrupted silently.
