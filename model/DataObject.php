@@ -2171,22 +2171,22 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 	 * Return the fields that have changed.
 	 * 
 	 * The change level affects what the functions defines as "changed":
-	 * - Level 1 will return strict changes, even !== ones.
-	 * - Level 2 is more lenient, it will only return real data changes, for example a change from 0 to null
+	 * - Level CHANGE_STRICT (integer 1) will return strict changes, even !== ones.
+	 * - Level CHANGE_VALUE (integer 2) is more lenient, it will only return real data changes, for example a change from 0 to null
 	 * would not be included.
 	 *
 	 * Example return:
 	 * <code>
 	 * array(
-	 *   'Title' = array('before' => 'Home', 'after' => 'Home-Changed', 'level' => 2)
+	 *   'Title' = array('before' => 'Home', 'after' => 'Home-Changed', 'level' => DataObject::CHANGE_VALUE)
 	 * )
 	 * </code>
 	 *
 	 * @param boolean $databaseFieldsOnly Get only database fields that have changed
-	 * @param int $changeLevel The strictness of what is defined as change
+	 * @param int $changeLevel The strictness of what is defined as change. Defaults to strict
 	 * @return array
 	 */
-	public function getChangedFields($databaseFieldsOnly = false, $changeLevel = 1) {
+	public function getChangedFields($databaseFieldsOnly = false, $changeLevel = self::CHANGE_STRICT) {
 		$changedFields = array();
 		
 		// Update the changed array with references to changed obj-fields
@@ -2208,7 +2208,7 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 		}
 
 		// Filter the list to those of a certain change level
-		if($changeLevel > 1) {
+		if($changeLevel > self::CHANGE_STRICT) {
 			if($fields) foreach($fields as $name => $level) {
 				if($level < $changeLevel) {
 					unset($fields[$name]);
@@ -2235,7 +2235,7 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 	 * @param int $changeLevel See {@link getChangedFields()}
 	 * @return boolean
 	 */
-	public function isChanged($fieldName = null, $changeLevel = 1) {
+	public function isChanged($fieldName = null, $changeLevel = self::CHANGE_STRICT) {
 		$changed = $this->getChangedFields(false, $changeLevel);
 		if(!isset($fieldName)) {
 			return !empty($changed);

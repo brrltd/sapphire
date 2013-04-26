@@ -885,4 +885,12 @@ abstract class SS_Database {
 		Deprecation::notice('3.2', 'Use DB::dont_require_field() instead');
 		$this->getSchemaManager()->dontRequireField($table, $fieldName);
 	}
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::build_sql() instead
+	 */
+	public function sqlQueryToString(SQLExpression $query, &$parameters = array()) {
+		Deprecation::notice('3.2', 'Use DB::build_sql() instead');
+		return $this->getQueryBuilder()->buildSQL($expression, $parameters);
+	}
 }

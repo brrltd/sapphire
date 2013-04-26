@@ -93,6 +93,13 @@ class DataQuery {
 		$where = $this->query->getWhere();
 		// Iterate through each condition
 		foreach($where as $i => $condition) {
+			
+			// Rewrite condition groups as plain conditions before comparison
+			if($condition instanceof SQLConditionGroup) {
+				$predicate = $condition->conditionSQL($parameters);
+				$condition = array($predicate => $parameters);
+			}
+			
 			// As each condition is a single length array, do a single
 			// iteration to extract the predicate and parameters
 			foreach($condition as $predicate => $parameters) {

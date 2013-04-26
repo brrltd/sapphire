@@ -389,24 +389,24 @@ abstract class SQLConditionalExpression extends SQLExpression {
 	 *
 	 * <code>
 	 *  // the entire predicate as a single string
-	 *  $query->addWhere("Column = 'Value'");
+	 *  $query->addWhere("\"Column\" = 'Value'");
 	 *
 	 *  // multiple predicates as an array
-	 *  $query->addWhere(array("Column = 'Value'", "Column != 'Value'"));
+	 *  $query->addWhere(array("\"Column\" = 'Value'", "\"Column\" != 'Value'"));
 	 * 
 	 *  // Shorthand for the above using argument expansion
-	 *  $query->addWhere("Column = 'Value'", "Column != 'Value'");
+	 *  $query->addWhere("\"Column\" = 'Value'", "\"Column\" != 'Value'");
 	 * 
 	 *  // multiple predicates with parameters
-	 *  $query->addWhere(array("Column = ?" => $column, "Name = ?" => $value)));
+	 *  $query->addWhere(array('"Column" = ?' => $column, '"Name" = ?' => $value)));
 	 * 
 	 *  // Shorthand for simple column comparison (as above), omitting the '?'
-	 *  $query->addWhere(array("Column" => $column, "Name" => $value)));
+	 *  $query->addWhere(array('"Column"' => $column, '"Name"' => $value));
 	 * 
 	 *  // Multiple predicates, each with multiple parameters.
 	 *  $query->addWhere(array(
-	 *		"ColumnOne = ? OR ColumnTwo != ?" => array(1, 4),
-	 *		"ID != ?" => $value
+	 *		'"ColumnOne" = ? OR "ColumnTwo" != ?' => array(1, 4),
+	 *		'"ID" != ?' => $value
 	 *	));
 	 * 
 	 *	// Using a dynamically generated condition (any object that implements SQLConditionGroup)
