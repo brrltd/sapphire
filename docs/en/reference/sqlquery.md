@@ -122,7 +122,7 @@ the database, but each are different in the way in which they behave.
 
 Previously, similar operations could be performed by using the `DB::manipulate`
 function which would build the INSERT and UPDATE queries on the fly. This method
-still exists, but internally uses `SQLUpdate` / `SQLInsert`, although the actualy
+still exists, but internally uses `SQLUpdate` / `SQLInsert`, although the actual
 query construction is now done by the `DBQueryBuilder` object.
 
 Each of these classes implements the interface `SQLWriteExpression`, noting that each
