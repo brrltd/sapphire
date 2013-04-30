@@ -281,7 +281,7 @@ offset, if not provided as an argument, will default to 0.
 ### Raw SQL options for advanced users
 
 Occasionally, the system described above won't let you do exactly what you need to do.  In these situations, we have 
-methods that manipulate the SQL query at a lower level.  When using these, please ensure that all table & field names 
+methods that manipulate the SQL query at a lower level.  When using these, please ensure that all table and field names 
 are escaped with double quotes, otherwise some DB back-ends (e.g. PostgreSQL) won't work.
 
 Under the hood, query generation is handled by the `[api:DataQuery]` class. This class does provide more direct
@@ -291,25 +291,134 @@ In general, we advise against using these methods unless it's absolutely necessa
 you need it to, you may also consider extending the ORM with new data types or filter modifiers (that documentation 
 still needs to be written)
 
-#### Where clauses
+<div class="notice" markdown="1">
+See [the security topic](/topics/security#parameterised-queries) for details on safe database querying and why parameterised queries
+are so necessary here.
+</div>
 
-You can specify a WHERE clause fragment (that will be combined with other filters using AND) with the `where()` method:
+#### SQL WHERE Predicates with Parameters
+
+If using `DataObject::get()` (which returns a `DataList` instance) you can specify a WHERE clause fragment
+(that will be combined with other filters using AND) with the `where()` method, or `whereAny()` to add a list 
+of clauses combined with OR.
+
+Placeholders within a predicate are denoted by the question mark symbol, and should not be quoted.
+
+For example:
 
 	:::php
 	$members = Member::get()->where(array('"FirstName" = ?' => 'Sam'));
 
+If using `SQLSelect` you should use `addWhere`, `setWhere`, `addWhereAny`, or `setWhereAny` to modify the query.
+
 Using the parameterised query syntax you can either provide a single variable as a parameter, an array of parameters
 if the SQL has multiple value placeholders, or simply pass an indexed array of strings for literal SQL.
 
-For simple field value comparison the ' = ?' can be omitted for simplicity, but the column name must still
-be double quoted.
+Although parameters can be escaped and directly inserted into the SQL condition (See `Convert::raw2sql()'),
+the parameterised syntax is the preferred method of declaring conditions on a query.
+
+Column names must still be double quoted, and for consistency and compatibility with other code, should also
+be prefixed with the table name.
+
+E.g.
 
 	:::php
-	$members = Member::get()->where(array(
-		'"FirstName"' => 'Sam', // Simple comparison condition
-		'"Score" = GREATEST(?,?)' => array(50, 56), // Multiple parameters for condition
-		'"Birthday" IS NOT NULL' // Literal SQL condition
+	<?php
+
+	$query = Table::get();
+
+	// multiple predicates with parameters
+	$query = $query->where(array(
+		'"Table"."Column" = ?' => $column,
+		'"Table"."Name" = ?' => $value
 	));
+
+	// Shorthand for simple column comparison (as above), omitting the '?'
+	// These will each be expanded internally to '"Table"."Column" = ?'
+	$query = $query->where(array(
+		'"Table"."Column"' => $column,
+		'"Table"."Name"' => $value
+	));
+
+	// Multiple predicates, some with multiple parameters.
+	// The parameters should ideally not be an associative array.
+	$query = $query->where(array(
+		'"Table"."ColumnOne" = ? OR "Table"."ColumnTwo" != ?' => array(1, 4),
+		'"Table"."ID" != ?' => $value
+	));
+
+	// Multiple predicates, each with explicitly typed parameters.
+	//
+	// The purpose of this syntax is to provide not only parameter values, but
+	// to also instruct the database connector on how to treat this value
+	// internally (subject to the database API supporting this feature).
+	//
+	// SQLQuery distinguishes these from predicates with multiple parameters
+	// by checking for the 'value' key in any array parameter given
+	$query = $query->whereAny(array(
+		'"Table"."Column"' => array(
+			'value' => $value,
+			'type' => 'string' // or any php type
+		),
+		'"Table"."HasValue"' => array(
+			'value' => 0,
+			'type' => 'boolean'
+		)
+	));
+
+#### Run-Time Evaluated Conditions with SQLConditionGroup
+
+Conditional expressions and groups may be encapsulated within a class (implementing
+the SQLConditionGroup interface) and evaluated at the time of execution.
+
+This is useful for conditions which may be placed into a query before the details
+of that condition are fully specified.
+
+E.g.
+
+	:::php
+	<?php
+
+	class RandomGroup implements SQLConditionGroup {
+		public $field = null;
+		public function conditionSQL(&$parameters) {
+			$parameters = array();
+			return "{$this->field} < RAND()";
+		}
+	}
+
+	$query = SQLSelect::create()
+		->setFrom('"MyObject"')
+		->setWhere($condition = new RandomCondition());
+	$condition->field = '"Score"';
+	$items = $query->execute();
+
+#### Direct SQL Predicate
+
+Conditions can be a literal piece of SQL which doesn't involve any parameters or values
+at all, or can using safely SQL-encoded values, as it was originally.
+
+<div class="warning" markdown='1'>
+In nearly every instance it's preferrable to use the parameterised syntax, especially dealing
+with variable parameters, even if those values were not submitted by the user.
+See [the security topic](/topics/security#parameterised-queries) for details.
+</div>
+
+For instance, the following are all valid ways of adding SQL conditions directly to a query
+
+	:::php
+	<?php
+	// the entire predicate as a single string
+	$query->addWhere("\"Column\" = 'Value'");
+
+	// multiple predicates as an array
+	$query->addWhere(array("\"Column\" = 'Value'", "\"Column\" != 'Value'"));
+
+	// Shorthand for the above using argument expansion
+	$query->addWhere("\"Column\" = 'Value'", "\"Column\" != 'Value'");
+
+	// Literal SQL condition
+	$query->addWhere('"Created" > NOW()"');
 
 #### Joining 
 
