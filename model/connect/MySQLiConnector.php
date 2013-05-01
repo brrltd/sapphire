@@ -65,7 +65,7 @@ class MySQLiConnector extends DBConnector {
 
 		// Set charset if given and not null. Can explicitly set to empty string to omit
 		$charset = isset($parameters['charset'])
-				? $parameters
+				? $parameters['charset']
 				: 'utf8';
 		if (!empty($charset)) $this->dbConn->set_charset($charset);
 	}
