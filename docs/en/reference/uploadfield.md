@@ -269,6 +269,8 @@ editform, or 'fileEditValidator' to determine the validator (eg RequiredFields).
    (of a method on File to provide a Validator) for the EditForm (Example: 'getCMSValidator')
  - `setTemplateFileButtons`: (string) Template name to use for the file buttons
  - `setTemplateFileEdit`: (string) Template name to use for the file edit form
+ - `setCanPreviewFolder`: (boolean|string) Is the upload folder visible to uploading users?
+   String values are interpreted as permission codes.
 
 Certain default values for the above can be configured using the YAML config system.
 
@@ -279,6 +281,7 @@ Certain default values for the above can be configured using the YAML config sys
 		allowedMaxFileNumber:
 		canUpload: true
 		canAttachExisting: 'CMS_ACCESS_AssetAdmin'
+		canPreviewFolder: true
 		previewMaxWidth: 80
 		previewMaxHeight: 60
 		uploadTemplateName: 'ss-uploadfield-uploadtemplate'
@@ -314,6 +317,7 @@ gallery the below code could be used:
 				$field = new UploadField('Images', 'Upload Images')
 			); 
 			$field->setCanAttachExisting(false); // Block access to Silverstripe assets library
+			$field->setCanPreviewFolder(false); // Don't show target filesystem folder on upload field
 			$field->relationAutoSetting = false; // Prevents the form thinking the GalleryPage is the underlying object
 			$actions = new FieldList(new FormAction('submit', 'Save Images'));
 			return new Form($this, 'Form', $fields, $actions, null);

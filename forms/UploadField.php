@@ -111,6 +111,13 @@ class UploadField extends FileField {
 		 */
 		'canAttachExisting' => "CMS_ACCESS_AssetAdmin",
 		/**
+		 * Shows the target folder for new uploads in the field UI.
+		 * Disable to keep the internal filesystem structure hidden from users.
+		 * 
+		 * @var boolean|string
+		 */
+		'canPreviewFolder' => true,
+		/**
 		 * Maximum width of the preview thumbnail
 		 * 
 		 * @var integer
@@ -230,6 +237,29 @@ class UploadField extends FileField {
 	 */
 	public function getTemplateFileEdit() {
 		return $this->templateFileEdit;
+	}
+
+	/**
+	 * Determine if the target folder for new uploads in is visible the field UI.
+	 * 
+	 * @return boolean
+	 */
+	public function canPreviewFolder() {
+		if(!$this->isActive()) return false;
+		$can = $this->getConfig('canPreviewFolder');
+		return (is_bool($can)) ? $can : Permission::check($can);
+	}
+
+	/**
+	 * Determine if the target folder for new uploads in is visible the field UI.
+	 * Disable to keep the internal filesystem structure hidden from users.
+	 * 
+	 * @param boolean|string $canPreviewFolder Either a boolean flag, or a
+	 * required permission code
+	 * @return UploadField Self reference
+	 */
+	public function setCanPreviewFolder($canPreviewFolder) {
+		return $this->setConfig('canPreviewFolder', $canPreviewFolder);
 	}
 
 	/**
@@ -429,6 +459,7 @@ class UploadField extends FileField {
 	 * 
 	 * @param string $key
 	 * @param mixed $val
+	 * @return UploadField self reference
 	 */
 	protected function setConfig($key, $val) {
 		$this->ufConfig[$key] = $val;
@@ -1006,7 +1037,6 @@ class UploadField extends FileField {
 	public function handleSelect(SS_HTTPRequest $request) {
 		return UploadField_SelectHandler::create($this, $this->getFolderName());
 	}
-	
 	
 	/**
 	 * Given an array of post variables, extract all temporary file data into an array

@@ -43,7 +43,7 @@
 				<% else %>
 					<b><% _t('UploadField.ATTACHFILE', 'Attach a file') %></b>
 				<% end_if %>
-				<% if getConfig('canPreviewFolder') %>
+				<% if canPreviewFolder %>
 					<small>(<%t UploadField.UPLOADSINTO 'saves into /{path}' path=$FolderName %>)</small>
 				<% end_if %>
 			</label>
