@@ -1461,8 +1461,6 @@ class UploadField_SelectHandler extends RequestHandler {
 		$folderField = new TreeDropdownField('ParentID', _t('HtmlEditorField.FOLDER', 'Folder'), 'Folder');
 		$folderField->setValue($folderID);
 		
-		
-
 		// Generate the file list field.
 		$config = GridFieldConfig::create();
 		$config->addComponent(new GridFieldSortableHeader());
@@ -1486,14 +1484,9 @@ class UploadField_SelectHandler extends RequestHandler {
 			$folderField,
 			$fileField
 		);
-		
-		//Existing file to replace
-		if ($replaceFileID = $this->parent->getRequest()->requestVar('ReplaceFileID')) {
-			$selectComposite->push(new HiddenField('ReplaceFileID','ReplaceFileID', $replaceFileID));
-		}
 
 		return $selectComposite;
-	}	
+	}
 
 	public function doAttach($data, $form) {
 		// Popup-window attach does not require server side action, as it is implemented via JS

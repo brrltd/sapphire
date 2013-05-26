@@ -95,20 +95,42 @@
 			this._adjustMaxNumberOfFiles(0);
 		},
 		attach: function(data) {
+
 			// Handles attachment of already uploaded files, similar to add
 			var self = this,
 				files = data.files,
+				replaceFileID = data.replaceFileID,
 				valid = true;
-            $.each(files, function (index, file) {
+
+			// If replacing an element (and it exists), adjust max number of files at this point
+			var replacedElement = null;
+			if(replaceFileID) {
+				replacedElement = $(".ss-uploadfield-item[data-fileid='"+replaceFileID+"']");
+				if(replacedElement.length === 0) {
+					replacedElement = null;
+				} else {
+					self._adjustMaxNumberOfFiles(1);
+				}
+			}
+
+			// Validate each file
+			$.each(files, function (index, file) {
 				self._adjustMaxNumberOfFiles(-1);
 				error = self._validate([file]);
-                valid = error && valid;
-            });
+				valid = error && valid;
+			});
 			data.isAdjusted = true;
 			data.files.valid = data.isValidated = valid;
-			data.context = this._renderDownload(files)
-				.appendTo(this._files)
-				.data('data', data);
+			
+			// Generate new file HTMl, and either append or replace (if replacing
+			// an already uploaded file).
+			data.context = this._renderDownload(files);
+			if(replacedElement) {
+				replacedElement.replaceWith(data.context);
+			} else {
+				data.context.appendTo(this._files);
+			}
+			data.context.data('data', data);
 			// Force reflow:
 			this._reflow = this._transition && data.context[0].offsetWidth;
 			data.context.addClass('in');
@@ -236,7 +258,6 @@
 				var uploadedFileId = null;
 				if (uploadedFile && uploadedFile.attr('data-fileid') > 0){
 					uploadedFileId = uploadedFile.attr('data-fileid');
-					iframeUrl = iframeUrl + '?ReplaceFileID=' + uploadedFileId;
 				}
 				
 				// Show dialog
@@ -268,15 +289,12 @@
 				var self = this, config = this.getConfig();
 				$.post(
 					config['urlAttach'], 
-					{'ids': ids, 'ReplaceFileID': uploadedFileId},
+					{'ids': ids},
 					function(data, status, xhr) {
-						var fn = self.fileupload('option', 'downloadTemplate');
-						if (config['allowedMaxFileNumber'] == 1){
-							container.empty();
-						}
-						container.append(fn({
+						self.fileupload('attach', {
 							files: data,
-							options: self.fileupload('option')
+							options: self.fileupload('option'),
+							replaceFileID: uploadedFileId
 						});
 					}
 				);
