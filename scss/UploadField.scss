@@ -80,16 +80,19 @@
 				.ss-uploadfield-item-status {
 					float: right;
 					padding: 0 0 0 5px;
-					width:100px; //Allocates the status message enough room to be useful. Will wrap if it is longer
-					text-align:right;				
+					text-align:right;
+					max-width: 75%;
+					
 					&.ui-state-error-text {
 						color: $color-button-destructive;
 						font-weight: bold;
 						width:150px; //Allocates the status message enough room to be useful. Will wrap if it is longer
 					}
+					
 					&.ui-state-warning-text {
 						color: darken($color-warning, 10%);
 					}
+					
 					&.ui-state-success-text {
 						color: $color-button-constructive;
 					}

@@ -35,6 +35,7 @@ class UploadField extends FileField {
 		'attach',
 		'handleItem',
 		'handleSelect',
+		'fileexists'
 	);
 
 	/**
@@ -144,9 +145,15 @@ class UploadField extends FileField {
 		 */
 		'downloadTemplateName' => 'ss-uploadfield-downloadtemplate',
 		/**
-		 * Show a warning when overwriting a file
+		 * Show a warning when overwriting a file.
+		 * This requires Upload->replaceFile config to be set to true, otherwise
+		 * files will be renamed instead of overwritten (although the warning will
+		 * still be displayed)
+		 * 
+		 * @see Upload
+		 * @var boolean
 		 */
-		'overwriteWarning' => true,
+		'overwriteWarning' => true
 	);
 
 	/**
@@ -261,6 +268,31 @@ class UploadField extends FileField {
 	public function setCanPreviewFolder($canPreviewFolder) {
 		return $this->setConfig('canPreviewFolder', $canPreviewFolder);
 	}
+	
+	/**
+	 * Determine if the field should show a warning when overwriting a file.
+	 * This requires Upload->replaceFile config to be set to true, otherwise
+	 * files will be renamed instead of overwritten (although the warning will
+	 * still be displayed)
+	 * 
+	 * @return boolean
+	 */
+	public function getOverwriteWarning() {
+		return $this->getConfig('overwriteWarning');
+	}
+	
+	/**
+	 * Determine if the field should show a warning when overwriting a file.
+	 * This requires Upload->replaceFile config to be set to true, otherwise
+	 * files will be renamed instead of overwritten (although the warning will
+	 * still be displayed)
+	 * 
+	 * @param boolean $overwriteWarning
+	 * @return UploadField Self reference
+	 */
+	public function setOverwriteWarning($overwriteWarning) {
+		return $this->setConfig('overwriteWarning', $overwriteWarning);
+	}
 
 	/**
 	 * Force a record to be used as "Parent" for uploaded Files (eg a Page with a has_one to File)
@@ -292,7 +324,18 @@ class UploadField extends FileField {
 	}
 	
 	/**
-	 * Loads the related record values into this field
+	 * Loads the related record values into this field. UploadField can be uploaded
+	 * in one of three ways:
+	 * 
+	 *  - By passing in a list of file IDs in the $value parameter (an array with a single
+	 *    key 'Files', with the value being the actual array of IDs).
+	 *  - By passing in an explicit list of File objects in the $record parameter, and
+	 *    leaving $value blank.
+	 *  - By passing in a dataobject in the $record parameter, from which file objects
+	 *    will be extracting using the field name as the relation field.
+	 * 
+	 * Each of these methods will update both the items (list of File objects) and the 
+	 * field value (list of file ID values).
 	 * 
 	 * @param array $value Array of submitted form data, if submitting from a form
 	 * @param array|DataObject|SS_List $record Full source record, either as a DataObject,
@@ -367,7 +410,9 @@ class UploadField extends FileField {
 	}
 
 	/**
-	 * Sets the items assigned to this field as an SS_List of File objects
+	 * Sets the items assigned to this field as an SS_List of File objects.
+	 * Calling setItems will also update the value of this field, as well as 
+	 * updating the internal list of File items.
 	 * 
 	 * @param SS_List $items
 	 * @return UploadField self reference
@@ -461,7 +506,10 @@ class UploadField extends FileField {
 	 * @param mixed $val
 	 * @return UploadField self reference
 	 */
-	protected function setConfig($key, $val) {
+	public function setConfig($key, $val) {
+		if(!array_key_exists($key, $this->ufConfig)) {
+			user_error("UploadField->setConfig called with invalid option: '$key'", E_USER_ERROR);
+		}
 		$this->ufConfig[$key] = $val;
 		return $this;
 	}
@@ -472,7 +520,10 @@ class UploadField extends FileField {
 	 * @param string $key
 	 * @return mixed
 	 */
-	protected function getConfig($key) {
+	public function getConfig($key) {
+		if(!array_key_exists($key, $this->ufConfig)) {
+			user_error("UploadField->getConfig called with invalid option: '$key'", E_USER_ERROR);
+		}
 		return $this->ufConfig[$key];
 	}
 
@@ -900,6 +951,7 @@ class UploadField extends FileField {
 			'url' => $this->Link('upload'),
 			'urlSelectDialog' => $this->Link('select'),
 			'urlAttach' => $this->Link('attach'),
+			'urlFileExists' => $this->link('fileexists'),
 			'acceptFileTypes' => '.+$',
 			// Fileupload treats maxNumberOfFiles as the max number of _additional_ items allowed
 			'maxNumberOfFiles' => $allowedMaxFileNumber ? ($allowedMaxFileNumber - count($this->getItemIDs())) : null
@@ -941,14 +993,10 @@ class UploadField extends FileField {
 		}
 
 		//get all the existing files in the current folder
-		if ($this->getConfig('overwriteWarning')) {
-			$folder = Folder::find_or_make($this->getFolderName());
-			$files = glob( $folder->getFullPath() . '/*' );
-			$config['existingFiles'] = array_map("basename", $files);;
-
+		if ($this->getOverwriteWarning()) {
 			//add overwrite warning error message to the config object sent to Javascript
 			$config['errorMessages']['overwriteWarning'] =
-				_t('UploadField.OVERWRITEWARNING','File with the same name already exists');
+				_t('UploadField.OVERWRITEWARNING', 'File with the same name already exists');
 		}
 		
 		$mergedConfig = array_merge($config, $this->ufConfig);
@@ -1049,7 +1097,10 @@ class UploadField extends FileField {
 		// Note: Format of posted file parameters in php is a feature of using
 		// <input name='{$Name}[Uploads][]' /> for multiple file uploads
 		$tmpFiles = array();
-		if(!empty($postVars['tmp_name']['Uploads'])) {
+		if(	!empty($postVars['tmp_name'])
+			&& is_array($postVars['tmp_name'])
+			&& !empty($postVars['tmp_name']['Uploads'])
+		) {
 			for($i = 0; $i < count($postVars['tmp_name']['Uploads']); $i++) {
 				// Skip if "empty" file
 				if(empty($postVars['tmp_name']['Uploads'][$i])) continue;
@@ -1059,7 +1110,11 @@ class UploadField extends FileField {
 				}
 				$tmpFiles[] = $tmpFile;
 			}
+		} elseif(!empty($postVars['tmp_name'])) {
+			// Fallback to allow single file uploads (method used by AssetUploadField)
+			$tmpFiles[] = $postVars;
 		}
+		
 		return $tmpFiles;
 	}
 	
@@ -1189,6 +1244,34 @@ class UploadField extends FileField {
 			$return[] = $this->encodeFileAttributes($file);
 		}
 		$response = new SS_HTTPResponse(Convert::raw2json($return));
+		$response->addHeader('Content-Type', 'application/json');
+		return $response;
+	}
+	
+	/**
+	 * Determines if a specified file exists
+	 * 
+	 * @param SS_HTTPRequest $request
+	 */
+	public function fileexists(SS_HTTPRequest $request) {
+		
+		// Check both original and safely filtered filename
+		$originalFile = $request->requestVar('filename');
+		$nameFilter = FileNameFilter::create();
+		$filteredFile = basename($nameFilter->filter($originalFile));
+		
+		// check if either file exists
+		$folder = $this->getFolderName();
+		$exists = false;
+		foreach(array($originalFile, $filteredFile) as $file) {
+			if(file_exists(ASSETS_PATH."/$folder/$file")) {
+				$exists = true;
+				break;
+			}
+		}
+		
+		// Encode and present response
+		$response = new SS_HTTPResponse(Convert::raw2json(array('exists' => $exists)));
 		$response->addHeader('Content-Type', 'application/json');
 		return $response;
 	}
@@ -1433,7 +1516,7 @@ class UploadField_SelectHandler extends RequestHandler {
 		$folderID = $this->parent->getRequest()->requestVar('ParentID');
 		if (!isset($folderID)) {
 			$folder = Folder::find_or_make($this->folderName);
-			$folderID = $folder->ID;
+			$folderID = $folder ? $folder->ID : 0;
 		}
 
 		// Construct the form

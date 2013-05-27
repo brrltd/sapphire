@@ -10,8 +10,19 @@ like for instance in creating and managing a simple gallery.
  
 ## Usage
 
-The field can be used in two ways: To upload a single file into a `has_one` relationship,
-or allow multiple files into a fixed folder (or relationship).
+The field can be used in three ways: To upload a single file into a `has_one` relationship,
+or allow multiple files into a `has_many` or `many_many` relationship, or to act as a stand
+alone uploader into a folder with no underlying relation.
+
+## Validation
+
+Although images are uploaded and stored on the filesystem immediately after selection,
+the value (or values) of this field will not be written to any related record until
+the record is saved and successfully validated. However, any invalid records will still
+persist across form submissions until explicitly removed or replaced by the user.
+
+Care should be taken as invalid files may remain within the filesystem until explicitly
+removed.
 
 ### Single fileupload
 
@@ -243,22 +254,20 @@ editform, or 'fileEditValidator' to determine the validator (eg RequiredFields).
 
 ### Configuration Reference
 
- - `setAutoUpload`: (boolean) Should the field automatically trigger an upload once
-   a file is selected?
  - `setAllowedMaxFileNumber`: (int) php validation of allowedMaxFileNumber 
    only works when a db relation is available, set to null to allow
    unlimited if record has a has_one and allowedMaxFileNumber is null, it will be set to 1
- - `setAllowedFileExensions`: (array) List of file extensions allowed
+ - `setAllowedFileExtensions`: (array) List of file extensions allowed
  - `setAllowedFileCategories`: (array|string) List of types of files allowed.
    May be any of 'image', 'audio', 'mov', 'zip', 'flash', or 'doc'
- - `setCanUpload`: (boolean|string) Can the user upload new files, or just select from existing files.
-   String values are interpreted as permission codes.
+ - `setAutoUpload`: (boolean) Should the field automatically trigger an upload once
+   a file is selected?
  - `setCanAttachExisting`: (boolean|string) Can the user attach existing files from the library.
    String values are interpreted as permission codes.
- - `setPreviewMaxWidth`: (int)
- - `setPreviewMaxHeight`: (int)
- - `setUploadTemplateName`: (string) javascript template used to display uploading 
-   files, see javascript/UploadField_uploadtemplate.js
+ - `setCanPreviewFolder`: (boolean|string) Can the user preview the folder files will be saved into?
+   String values are interpreted as permission codes.
+ - `setCanUpload`: (boolean|string) Can the user upload new files, or just select from existing files.
+   String values are interpreted as permission codes.
  - `setDownloadTemplateName`: (string) javascript template used to display already 
    uploaded files, see javascript/UploadField_downloadtemplate.js
  - `setFileEditFields`: (FieldList|string) FieldList $fields or string $name 
@@ -267,8 +276,13 @@ editform, or 'fileEditValidator' to determine the validator (eg RequiredFields).
    (of a method on File to provide a actions) for the EditForm (Example: 'getCMSActions')
  - `setFileEditValidator`: (string) Validator (eg RequiredFields) or string $name 
    (of a method on File to provide a Validator) for the EditForm (Example: 'getCMSValidator')
+ - `setOverwriteWarning`: (boolean) Show a warning when overwriting a file.
+ - `setPreviewMaxWidth`: (int)
+ - `setPreviewMaxHeight`: (int)
  - `setTemplateFileButtons`: (string) Template name to use for the file buttons
  - `setTemplateFileEdit`: (string) Template name to use for the file edit form
+ - `setUploadTemplateName`: (string) javascript template used to display uploading 
+   files, see javascript/UploadField_uploadtemplate.js
  - `setCanPreviewFolder`: (boolean|string) Is the upload folder visible to uploading users?
    String values are interpreted as permission codes.
 
@@ -286,6 +300,9 @@ Certain default values for the above can be configured using the YAML config sys
 		previewMaxHeight: 60
 		uploadTemplateName: 'ss-uploadfield-uploadtemplate'
 		downloadTemplateName: 'ss-uploadfield-downloadtemplate'
+		overwriteWarning: true # Warning before overwriting existing file (only relevant when Upload: replaceFile is true)
+
+The above settings can also be set on a per-instance basis by using `setConfig` with the appropriate key.
 
 You can also configure the underlying `[api:Upload]` class, by using the YAML config system.
 
