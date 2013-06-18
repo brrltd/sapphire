@@ -123,6 +123,15 @@ class Member extends DataObject implements TemplateGlobalProvider {
 	 * and cleared on logout.
 	 */
 	private static $login_marker_cookie = null;
+	
+	/**
+	 * If this is true then the Session will be destroyed via
+	 * {@link Session::destroy()} on user logout.
+	 * 
+	 * @config
+	 * @var boolean
+	 */
+	private static $destroy_session_on_logout = true;
 
 	/**
 	 * Indicates that when a {@link Member} logs in, Member:session_regenerate_id()
@@ -453,8 +462,8 @@ class Member extends DataObject implements TemplateGlobalProvider {
 		Session::clear("loggedInAs");
 		if(Member::config()->login_marker_cookie) Cookie::set(Member::config()->login_marker_cookie, null, 0);
 
-		Session::destroy();
-
+		if(Member::config()->destroy_session_on_logout) Session::destroy();
+		
 		$this->extend('memberLoggedOut');
 
 		$this->RememberLoginToken = null;
