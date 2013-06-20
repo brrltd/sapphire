@@ -152,17 +152,25 @@ class DataObjectTest extends SapphireTest {
 		$this->assertEquals('Captain', $captain1->FirstName);
 
 		// Test get_one() without caching
-		$comment1 = DataObject::get_one('DataObjectTest_TeamComment', "\"Name\" = 'Joe'", false);
+		$comment1 = DataObject::get_one('DataObjectTest_TeamComment', array(
+			'"DataObjectTest_TeamComment"."Name"' => 'Joe'
+		), false);
 		$comment1->Comment = "Something Else";
 
-		$comment2 = DataObject::get_one('DataObjectTest_TeamComment', "\"Name\" = 'Joe'", false);
+		$comment2 = DataObject::get_one('DataObjectTest_TeamComment', array(
+			'"DataObjectTest_TeamComment"."Name"' => 'Joe'
+		), false);
 		$this->assertNotEquals($comment1->Comment, $comment2->Comment);
 
 		// Test get_one() with caching
-		$comment1 = DataObject::get_one('DataObjectTest_TeamComment', "\"Name\" = 'Bob'", true);
+		$comment1 = DataObject::get_one('DataObjectTest_TeamComment', array(
+			'"DataObjectTest_TeamComment"."Name"' => 'Bob'
+		), true);
 		$comment1->Comment = "Something Else";
 
-		$comment2 = DataObject::get_one('DataObjectTest_TeamComment', "\"Name\" = 'Bob'", true);
+		$comment2 = DataObject::get_one('DataObjectTest_TeamComment', array(
+			'"DataObjectTest_TeamComment"."Name"' => 'Bob'
+		), true);
 		$this->assertEquals((string)$comment1->Comment, (string)$comment2->Comment);
 
 		// Test get_one() with order by without caching
@@ -179,7 +187,10 @@ class DataObjectTest extends SapphireTest {
 		$this->assertEquals('Phil', $comment->Name);
 
 		// Test get_one() with bad case on the classname
-		$subteam1 = DataObject::get_one('dataobjecttest_subteam', "\"Title\" = 'Subteam 1'", true);
+		$subteam1 = DataObject::get_one('dataobjecttest_subteam', array(
+			'"DataObjectTest_Team"."Title"' => 'Subteam 1'
+		), true);
+		$this->assertNotEmpty($subteam1);
 		$this->assertEquals($subteam1->Title, "Subteam 1");
 	}
 
@@ -404,10 +415,10 @@ class DataObjectTest extends SapphireTest {
 		$this->assertFalse($obj->isChanged());
 
 		/* If we perform the same random query twice, it shouldn't return the same results */
-		$itemsA = DataObject::get("DataObjectTest_TeamComment", "", DB::getConn()->random());
-		$itemsB = DataObject::get("DataObjectTest_TeamComment", "", DB::getConn()->random());
-		$itemsC = DataObject::get("DataObjectTest_TeamComment", "", DB::getConn()->random());
-		$itemsD = DataObject::get("DataObjectTest_TeamComment", "", DB::getConn()->random());
+		$itemsA = DataObject::get("DataObjectTest_TeamComment", "", DB::get_conn()->random());
+		$itemsB = DataObject::get("DataObjectTest_TeamComment", "", DB::get_conn()->random());
+		$itemsC = DataObject::get("DataObjectTest_TeamComment", "", DB::get_conn()->random());
+		$itemsD = DataObject::get("DataObjectTest_TeamComment", "", DB::get_conn()->random());
 		foreach($itemsA as $item) $keysA[] = $item->ID;
 		foreach($itemsB as $item) $keysB[] = $item->ID;
 		foreach($itemsC as $item) $keysC[] = $item->ID;
@@ -714,7 +725,7 @@ class DataObjectTest extends SapphireTest {
 	
 	public function testForceInsert() {
 		/* If you set an ID on an object and pass forceInsert = true, then the object should be correctly created */
-		$conn = DB::getConn();
+		$conn = DB::get_conn();
 		if(method_exists($conn, 'allowPrimaryKeyEditing')) $conn->allowPrimaryKeyEditing('DataObjectTest_Team', true);
 		$obj = new DataObjectTest_SubTeam();
 		$obj->ID = 1001;
@@ -1063,6 +1074,7 @@ class DataObjectTest extends SapphireTest {
 		);
 		$this->assertEquals($ceo->ID, $ceo->Company()->CEOID, 'Remote IDs are automatically set.');
 		
+		$ceo->Name = 'Edward Scissorhands';
 		$ceo->write(false, false, false, true);
 		$this->assertTrue($ceo->Company()->isInDB(), 'write() writes belongs_to components to the database.');
 		

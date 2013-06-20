@@ -61,6 +61,7 @@ abstract class StringField extends DBField {
 	 * Set whether this field stores empty strings rather than converting
 	 * them to null.
 	 *
+	 * 
 	 * @param $value boolean True if empty strings are to be converted to null
 	 */
 	public function setNullifyEmpty($value) {
@@ -91,7 +92,7 @@ abstract class StringField extends DBField {
 	 */
 	public function prepValueForDB($value) {
 		if(!$this->nullifyEmpty && $value === '') {
-			return DB::getConn()->prepStringForDB($value);
+			return $value;
 		} else {
 			return parent::prepValueForDB($value);
 		}

@@ -167,8 +167,8 @@ class UnsavedRelationList extends ArrayList {
 	}
 
 	/**
-     * Remove all items from this relation.
-     */
+	 * Remove all items from this relation.
+	 */
 	public function removeAll() {
 		$this->items = array();
 		$this->extraFields = array();

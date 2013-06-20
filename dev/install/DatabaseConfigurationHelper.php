@@ -1,6 +1,8 @@
 <?php
+
 /**
  * Interface for database helper classes.
+ * 
  * @package framework
  */
 interface DatabaseConfigurationHelper {
@@ -29,6 +31,22 @@ interface DatabaseConfigurationHelper {
 	 * @return array Result - e.g. array('okay' => true, 'connection' => mysql link, 'error' => 'details of error')
 	 */
 	public function requireDatabaseConnection($databaseConfig);
+	
+	/**
+	 * Determines the version of the database server
+	 * 
+	 * @param array $databaseConfig Associative array of db configuration, e.g. "server", "username" etc
+	 * @return string Version of database server
+	 */
+	public function getDatabaseVersion($databaseConfig);
+	
+	/**
+	 * Check database version
+	 * 
+	 * @param array $databaseConfig Associative array of db configuration, e.g. "server", "username" etc
+	 * @return array Result - e.g. array('success' => true, 'error' => 'details of error')
+	 */
+	public function requireDatabaseVersion($databaseConfig);
 
 	/**
 	 * Ensure that the database connection is able to use an existing database,

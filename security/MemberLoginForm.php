@@ -263,10 +263,24 @@ JS
 	 * @param array $data Submitted data
 	 */
 	public function forgotPassword($data) {
-		$SQL_data = Convert::raw2sql($data);
-		$SQL_email = $SQL_data['Email'];
-		$member = DataObject::get_one('Member', "\"Email\" = '{$SQL_email}'");
 		
+		// Ensure password is given
+		if(empty($data['Email'])) {
+			$this->sessionMessage(
+				_t('Member.ENTEREMAIL', 'Please enter an email address to get a password reset link.'),
+				'bad'
+			);
+			
+			$this->controller->redirect('Security/lostpassword');
+			return;
+		}
+		
+		// Find existing member
+		$member = DataObject::get_one('Member', array(
+			'"Member"."Email"' => $data['Email']
+		));
+		
+		// Check member
 		if($member) {
 			$token = $member->generateAutologinTokenAndStoreHash();
 

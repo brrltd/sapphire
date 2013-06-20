@@ -31,15 +31,15 @@ class ExactMatchFilter extends SearchFilter {
 	 */
 	protected function applyOne(DataQuery $query) {
 		$this->model = $query->applyRelation($this->relation);
-		$modifiers = $this->getModifiers();
-		$where = DB::getConn()->comparisonClause(
+		$where = DB::get_conn()->comparisonClause(
 			$this->getDbName(),
-			Convert::raw2sql($this->getValue()),
+			null,
 			true, // exact?
 			false, // negate?
-			$this->getCaseSensitive()
+			$this->getCaseSensitive(),
+			true
 		);
-		return $query->where($where);
+		return $query->where(array($where => $this->getValue()));
 	}
 
 	/**
@@ -50,31 +50,19 @@ class ExactMatchFilter extends SearchFilter {
 	 */
 	protected function applyMany(DataQuery $query) {
 		$this->model = $query->applyRelation($this->relation);
-		$modifiers = $this->getModifiers();
-		$values = array();
+		$whereClause = array();
 		foreach($this->getValue() as $value) {
-			$values[] = Convert::raw2sql($value);
-		}
-		if(!in_array('case', $modifiers) && !in_array('nocase', $modifiers)) {
-			$valueStr = "'" . implode("', '", $values) . "'";
-			return $query->where(sprintf(
-				'%s IN (%s)',
+			$predicate = DB::get_conn()->comparisonClause(
 				$this->getDbName(),
-				$valueStr
-			));
-		} else {
-			foreach($values as &$v) {
-				$v = DB::getConn()->comparisonClause(
-					$this->getDbName(),
-					$v,
-					true, // exact?
-					false, // negate?
-					$this->getCaseSensitive()
-				);
-			}
-			$where = implode(' OR ', $values);
-			return $query->where($where);
+				null,
+				true, // exact?
+				false, // negate?
+				$this->getCaseSensitive(),
+				true
+			);
+			$whereClause[] = array($predicate => $value);
 		}
+		return $query->whereAny($whereClause);
 	}
 
 	/**
@@ -84,15 +72,15 @@ class ExactMatchFilter extends SearchFilter {
 	 */
 	protected function excludeOne(DataQuery $query) {
 		$this->model = $query->applyRelation($this->relation);
-		$modifiers = $this->getModifiers();
-		$where = DB::getConn()->comparisonClause(
+		$where = DB::get_conn()->comparisonClause(
 			$this->getDbName(),
-			Convert::raw2sql($this->getValue()),
+			null,
 			true, // exact?
 			true, // negate?
-			$this->getCaseSensitive()
+			$this->getCaseSensitive(),
+			true
 		);
-		return $query->where($where);
+		return $query->where(array($where => $this->getValue()));
 	}
 
 	/**
@@ -103,31 +91,20 @@ class ExactMatchFilter extends SearchFilter {
 	 */
 	protected function excludeMany(DataQuery $query) {
 		$this->model = $query->applyRelation($this->relation);
-		$modifiers = $this->getModifiers();
-		$values = array();
+		$predicates = array();
+		$parameters = array();
 		foreach($this->getValue() as $value) {
-			$values[] = Convert::raw2sql($value);
-		}
-		if(!in_array('case', $modifiers) && !in_array('nocase', $modifiers)) {
-			$valueStr = "'" . implode("', '", $values) . "'";
-			return $query->where(sprintf(
-				'%s NOT IN (%s)',
+			$predicates[] = DB::get_conn()->comparisonClause(
 				$this->getDbName(),
-				$valueStr
-			));
-		} else {
-			foreach($values as &$v) {
-				$v = DB::getConn()->comparisonClause(
-					$this->getDbName(),
-					$v,
-					true, // exact?
-					true, // negate?
-					$this->getCaseSensitive()
-				);
-			}
-			$where = implode(' OR ', $values);
-			return $query->where($where);
+				null,
+				true, // exact?
+				true, // negate?
+				$this->getCaseSensitive(),
+				true
+			);
+			$parameters[] = $value;
 		}
+		return $query->where(array(implode(' AND ', $predicates) => $parameters));
 	}
 	
 	public function isEmpty() {

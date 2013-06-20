@@ -165,8 +165,11 @@ foreach(DatabaseAdapterRegistry::get_adapters() as $class => $details) {
 
 // Load database config
 if(isset($_REQUEST['db'])) {
-	if(isset($_REQUEST['db']['type'])) $type = $_REQUEST['db']['type'];
-	else $type = $_REQUEST['db']['type'] = defined('SS_DATABASE_CLASS') ? SS_DATABASE_CLASS : 'MySQLDatabase';
+	if(isset($_REQUEST['db']['type'])) {
+		$type = $_REQUEST['db']['type'];
+	} else {
+		$type = $_REQUEST['db']['type'] = defined('SS_DATABASE_CLASS') ? SS_DATABASE_CLASS : 'MySQLDatabase';
+	}
 
 	// Disabled inputs don't submit anything - we need to use the environment (except the database name)
 	if($usingEnv) {
@@ -301,9 +304,14 @@ class InstallRequirements {
 	 * Check the database configuration. These are done one after another
 	 * starting with checking the database function exists in PHP, and
 	 * continuing onto more difficult checks like database permissions.
+	 * 
+	 * @param array $databaseConfig The list of database parameters
+	 * @return boolean Validity of database configuration details
 	 */
 	function checkDatabase($databaseConfig) {
-		if($this->requireDatabaseFunctions(
+		
+		// Check if support is available
+		if(!$this->requireDatabaseFunctions(
 			$databaseConfig,
 			array(
 				"Database Configuration",
@@ -311,54 +319,63 @@ class InstallRequirements {
 				"Database support in PHP",
 				$this->getDatabaseTypeNice($databaseConfig['type'])
 			)
-		)) {
-			if($this->requireDatabaseServer(
-				$databaseConfig,
-				array(
-					"Database Configuration",
-					"Database server",
-					$databaseConfig['type'] == 'SQLiteDatabase' ? "I couldn't write to path '$databaseConfig[path]'" : "I couldn't find a database server on '$databaseConfig[server]'",
-					$databaseConfig['type'] == 'SQLiteDatabase' ? $databaseConfig['path'] : $databaseConfig['server']
-				)
-			)) {
-				if($this->requireDatabaseConnection(
-					$databaseConfig,
-					array(
-						"Database Configuration",
-						"Database access credentials",
-						"That username/password doesn't work"
-					)
-				)) {
-					if($this->requireDatabaseVersion(
-						$databaseConfig,
-						array(
-							"Database Configuration",
-							"Database server version requirement",
-							'',
-							'Version ' . $this->getDatabaseConfigurationHelper($databaseConfig['type'])->getDatabaseVersion($databaseConfig)
-						)
-					)) {
-						if($this->requireDatabaseOrCreatePermissions(
-							$databaseConfig,
-							array(
-								"Database Configuration",
-								"Can I access/create the database",
-								"I can't create new databases and the database '$databaseConfig[database]' doesn't exist"
-							)
-						)) {
-							$this->requireDatabaseAlterPermissions(
-								$databaseConfig,
-								array(
-									"Database Configuration",
-									"Can I ALTER tables",
-									"I don't have permission to ALTER tables"
-								)
-							);
-						}
-					}
-				}
-			}
-		}
+		)) return false;
+				
+		// Check if the server is available
+		$usePath = !empty($databaseConfig['path']) && empty($databaseConfig['server']);
+		if(!$this->requireDatabaseServer(
+			$databaseConfig,
+			array(
+				"Database Configuration",
+				"Database server",
+				$usePath ? "I couldn't write to path '$databaseConfig[path]'" : "I couldn't find a database server on '$databaseConfig[server]'",
+				$usePath ? $databaseConfig['path'] : $databaseConfig['server']
+			)
+		)) return false;
+		
+		// Check if the connection credentials allow access to the server / database
+		if(!$this->requireDatabaseConnection(
+			$databaseConfig,
+			array(
+				"Database Configuration",
+				"Database access credentials",
+				"That username/password doesn't work"
+			)
+		)) return false;
+				
+		// Check the necessary server version is available
+		if(!$this->requireDatabaseVersion(
+			$databaseConfig,
+			array(
+				"Database Configuration",
+				"Database server version requirement",
+				'',
+				'Version ' . $this->getDatabaseConfigurationHelper($databaseConfig['type'])->getDatabaseVersion($databaseConfig)
+			)
+		)) return false;
+					
+		// Check that database creation permissions are available
+		if(!$this->requireDatabaseOrCreatePermissions(
+			$databaseConfig,
+			array(
+				"Database Configuration",
+				"Can I access/create the database",
+				"I can't create new databases and the database '$databaseConfig[database]' doesn't exist"
+			)
+		)) return false;
+						
+		// Check alter permission (necessary to create tables etc)
+		if(!$this->requireDatabaseAlterPermissions(
+			$databaseConfig,
+			array(
+				"Database Configuration",
+				"Can I ALTER tables",
+				"I don't have permission to ALTER tables"
+			)
+		)) return false;
+		
+		// Success!
+		return true;
 	}
 
 	function checkAdminConfig($adminConfig) {
@@ -1157,7 +1174,9 @@ class Installer extends InstallRequirements {
 			$databaseVersion = $config['db']['type'];
 			$helper = $this->getDatabaseConfigurationHelper($dbType);
 			if($helper && method_exists($helper, 'getDatabaseVersion')) {
-				$databaseVersion = urlencode($dbType . ': ' . $helper->getDatabaseVersion($config['db'][$dbType]));
+				$versionConfig = $config['db'][$dbType];
+				$versionConfig['type'] = $dbType;
+				$databaseVersion = urlencode($dbType . ': ' . $helper->getDatabaseVersion($versionConfig));
 			}
 
 			$url = "http://ss2stat.silverstripe.com/Installation/add?SilverStripe=$silverstripe_version&PHP=$phpVersion&Database=$databaseVersion&WebServer=$encWebserver";
@@ -1208,12 +1227,23 @@ require_once('conf/ConfigureFromEnv.php');
 
 // Set the site locale
 i18n::set_locale('$locale');
+		
+// Selected theme
+Config::inst()->update('SSViewer', 'theme', '$theme');
+
 PHP
 			);
 
 		} else {
 			$this->statusMessage("Setting up 'mysite/_config.php'...");
-			$escapedPassword = addslashes($dbConfig['password']);
+			// Create databaseConfig
+			$lines = array(
+				$lines[] = "\t'type' => '$type'"
+			);
+			foreach($dbConfig as $key => $value) {
+				$lines[] = "\t'{$key}' => '$value'";
+			}
+			$databaseConfigContent = implode(",\n", $lines);
 			$this->writeToFile("mysite/_config.php", <<<PHP
 <?php
 
@@ -1222,16 +1252,15 @@ global \$project;
 
 global \$databaseConfig;
 \$databaseConfig = array(
-	"type" => '{$type}',
-	"server" => '{$dbConfig['server']}',
-	"username" => '{$dbConfig['username']}',
-	"password" => '{$escapedPassword}',
-	"database" => '{$dbConfig['database']}',
-	"path" => '{$dbConfig['path']}',
+{$databaseConfigContent}
 );
 
 // Set the site locale
 i18n::set_locale('$locale');
+		
+// Selected theme
+Config::inst()->update('SSViewer', 'theme', '$theme');
+
 PHP
 			);
 		}
@@ -1292,7 +1321,7 @@ PHP
 		$adminMember = Security::findAnAdministrator();
 		$adminMember->Email = $config['admin']['username'];
 		$adminMember->Password = $config['admin']['password'];
-		$adminMember->PasswordEncryption = Security::get_password_encryption_algorithm();
+		$adminMember->PasswordEncryption = Security::config()->encryption_algorithm;
 
 		try {
 			$this->statusMessage('Creating default CMS admin account...');

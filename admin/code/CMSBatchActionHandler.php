@@ -95,14 +95,8 @@ class CMSBatchActionHandler extends RequestHandler {
 				Translatable::disable_locale_filter();
 			}
 			
-			$pages = DataObject::get(
-				$this->recordClass, 
-				sprintf(
-					'"%s"."ID" IN (%s)',
-					ClassInfo::baseDataClass($this->recordClass),
-					implode(", ", $ids)
-				)
-			);
+			$recordClass = $this->recordClass;
+			$pages = DataObject::get($recordClass)->byIDs($ids);
 			
 			if(class_exists('Translatable') && SiteTree::has_extension('Translatable')) {
 				Translatable::enable_locale_filter();
@@ -116,12 +110,11 @@ class CMSBatchActionHandler extends RequestHandler {
 					if($pages) foreach($pages as $page) unset($idsFromLive[$page->ID]);
 					$idsFromLive = array_keys($idsFromLive);
 
-					$sql = sprintf(
-						'"%s"."ID" IN (%s)',
-						$this->recordClass,
-						implode(", ", $idsFromLive)
+					$idsPlaceholder = DB::placeholders($idsFromLive);
+					$where = array(
+						"\"{$this->recordClass}\".\"ID\" IN ($idsPlaceholder)" => $idsFromLive
 					);
-					$livePages = Versioned::get_by_stage($this->recordClass, 'Live', $sql);
+					$livePages = Versioned::get_by_stage($this->recordClass, 'Live', $where);
 					if($pages) {
 						// Can't merge into a DataList, need to condense into an actual list first
 						// (which will retrieve all records as objects, so its an expensive operation)
