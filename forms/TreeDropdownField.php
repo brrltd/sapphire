@@ -133,7 +133,7 @@ class TreeDropdownField extends FormField {
 		if(!is_callable($callback, true)) {
 			throw new InvalidArgumentException('TreeDropdownField->setDisableFunction(): not passed a valid callback');
 		}
-		
+	
 		$this->disableCallback = $callback;
 		return $this;
 	}
@@ -199,8 +199,8 @@ class TreeDropdownField extends FormField {
 			if($this->showSearch) {
 				$title = _t('DropdownField.CHOOSESEARCH', '(Choose or Search)', 'start value of a dropdown');
 			} else {
-				$title = _t('DropdownField.CHOOSE', '(Choose)', 'start value of a dropdown');
-			}
+			$title = _t('DropdownField.CHOOSE', '(Choose)', 'start value of a dropdown');
+		}
 		}
 
 		// TODO Implement for TreeMultiSelectField
@@ -245,7 +245,7 @@ class TreeDropdownField extends FormField {
 		// Regular source specification
 		$isSubTree = false;
 
-		$this->search = Convert::Raw2SQL($request->requestVar('search'));
+		$this->search = $request->requestVar('search');
 		$ID = (is_numeric($request->latestparam('ID')))
 			? (int)$request->latestparam('ID')
 			: (int)$request->requestVar('ID');
@@ -434,13 +434,13 @@ class TreeDropdownField extends FormField {
 			$sourceObject = $this->sourceObject;
 			$wheres = array();
 			if(singleton($sourceObject)->hasDatabaseField($this->labelField)) {
-				$wheres[] = "\"$this->labelField\" LIKE '%$this->search%'";
+				$wheres[] = array("\"$this->labelField\" LIKE ?" => "%{$this->search}%");
 			} else {
 				if(singleton($sourceObject)->hasDatabaseField('Title')) {
-					$wheres[] = "\"Title\" LIKE '%$this->search%'";
+					$wheres[] = array('"Title" LIKE ?' => "%{$this->search}%");
 				}
 				if(singleton($sourceObject)->hasDatabaseField('Name')) {
-					$wheres[] = "\"Name\" LIKE '%$this->search%'";
+					$wheres[] = array('"Name" LIKE ?' => "%{$this->search}%");
 				}
 			} 
 		
@@ -452,7 +452,7 @@ class TreeDropdownField extends FormField {
 				));
 			}
 
-			$res = DataObject::get($this->sourceObject, implode(' OR ', $wheres));
+			$res = DataObject::get($this->sourceObject)->whereAny($wheres);
 		}
 		
 		if( $res ) {
@@ -462,8 +462,11 @@ class TreeDropdownField extends FormField {
 				$this->searchIds[$row->ID] = true;
 			}
 			while (!empty($parents)) {
-				$res = DB::query('SELECT "ParentID", "ID" FROM "' . $this->sourceObject
-					. '" WHERE "ID" in ('.implode(',',array_keys($parents)).')');
+				$idsClause = DB::placeholders($parents);
+				$res = DB::prepared_query(
+					"SELECT \"ParentID\", \"ID\" FROM \"{$this->sourceObject}\" WHERE \"ID\" in ($idsClause)",
+					array_keys($parents)
+				);
 				$parents = array();
 
 				foreach($res as $row) {
@@ -485,7 +488,9 @@ class TreeDropdownField extends FormField {
 		if($this->keyField == 'ID') {
 			return DataObject::get_by_id($this->sourceObject, $key);
 		} else {
-			return DataObject::get_one($this->sourceObject, "\"{$this->keyField}\" = '".Convert::raw2sql($key)."'");
+			return DataObject::get_one($this->sourceObject, array(
+				"\"{$this->keyField}\"" => $key
+			));
 		}
 	}
 

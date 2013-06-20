@@ -21,66 +21,75 @@ class PartialMatchFilter extends SearchFilter {
 		parent::setModifiers($modifiers);
 	}
 	
+	/**
+	 * Apply the match filter to the given variable value
+	 * 
+	 * @param string $value The raw value
+	 * @return string
+	 */
+	protected function getMatchPattern($value) {
+		return "%$value%";
+	}
+	
 	protected function applyOne(DataQuery $query) {
 		$this->model = $query->applyRelation($this->relation);
-		$modifiers = $this->getModifiers();
-		$where = DB::getConn()->comparisonClause(
+		$where = DB::get_conn()->comparisonClause(
 			$this->getDbName(),
-			'%' . Convert::raw2sql($this->getValue()) . '%',
+			null,
 			false, // exact?
 			false, // negate?
-			$this->getCaseSensitive()
+			$this->getCaseSensitive(),
+			true
 		);
-
-		return $query->where($where);
+		return $query->where(array($where => $this->getMatchPattern($this->getValue())));
 	}
 
 	protected function applyMany(DataQuery $query) {
 		$this->model = $query->applyRelation($this->relation);
-		$where = array();
-		$modifiers = $this->getModifiers();
+		$whereClause = array();
 		foreach($this->getValue() as $value) {
-			$where[]= DB::getConn()->comparisonClause(
+			$predicate = DB::get_conn()->comparisonClause(
 				$this->getDbName(),
-				'%' . Convert::raw2sql($value) . '%',
+				null,
 				false, // exact?
 				false, // negate?
-				$this->getCaseSensitive()
+				$this->getCaseSensitive(),
+				true
 			);
+			$whereClause[] = array($predicate => $this->getMatchPattern($value));
 		}
-
-		return $query->where(implode(' OR ', $where));
+		return $query->whereAny($whereClause);
 	}
 
 	protected function excludeOne(DataQuery $query) {
 		$this->model = $query->applyRelation($this->relation);
-		$modifiers = $this->getModifiers();
-		$where = DB::getConn()->comparisonClause(
+		$where = DB::get_conn()->comparisonClause(
 			$this->getDbName(),
-			'%' . Convert::raw2sql($this->getValue()) . '%',
+			null,
 			false, // exact?
 			true, // negate?
-			$this->getCaseSensitive()
+			$this->getCaseSensitive(),
+			true
 		);
-		
-		return $query->where($where);
+		return $query->where(array($where => $this->getMatchPattern($this->getValue())));
 	}
 
 	protected function excludeMany(DataQuery $query) {
 		$this->model = $query->applyRelation($this->relation);
-		$where = array();
-		$modifiers = $this->getModifiers();
+		$predicates = array();
+		$parameters = array();
 		foreach($this->getValue() as $value) {
-			$where[]= DB::getConn()->comparisonClause(
+			$predicates[] = DB::get_conn()->comparisonClause(
 				$this->getDbName(),
-				'%' . Convert::raw2sql($value) . '%',
+				null,
 				false, // exact?
 				true, // negate?
-				$this->getCaseSensitive()
+				$this->getCaseSensitive(),
+				true
 			);
+			$parameters[] = $this->getMatchPattern($value);
 		}
-
-		return $query->where(implode(' AND ', $where));
+		return $query->where(array(implode(' AND ', $predicates) => $parameters));
 	}
 	
 	public function isEmpty() {

@@ -43,6 +43,8 @@ class RequestHandler extends ViewableData {
 	
 	/**
 	 * The DataModel for this request
+	 * 
+	 * @var DataModel
 	 */
 	protected $model = null;
 	
@@ -121,6 +123,8 @@ class RequestHandler extends ViewableData {
 	
 	/**
 	 * Set the DataModel for this request.
+	 * 
+	 * @param DataModel $model
 	 */
 	public function setDataModel($model) {
 		$this->model = $model;

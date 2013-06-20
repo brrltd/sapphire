@@ -741,9 +741,9 @@ class Security extends Controller implements TemplateGlobalProvider {
 
 		// find a group with ADMIN permission
 		$adminGroup = DataObject::get('Group')
-			->where("\"Permission\".\"Code\" = 'ADMIN'")
-			->sort("\"Group\".\"ID\"")
-			->innerJoin("Permission", "\"Group\".\"ID\"=\"Permission\".\"GroupID\"")
+			->where(array('"Permission"."Code"' => 'ADMIN'))
+			->sort('"Group"."ID"')
+			->innerJoin("Permission", '"Group"."ID" = "Permission"."GroupID"')
 			->First();
 		
 		if(is_callable('Subsite::changeSubsite')) {
@@ -931,7 +931,7 @@ class Security extends Controller implements TemplateGlobalProvider {
 			singleton($table);
 		
 			// if any of the tables don't have all fields mapped as table columns
-			$dbFields = DB::fieldList($table);
+			$dbFields = DB::field_list($table);
 			if(!$dbFields) return false;
 			
 			$objFields = DataObject::database_fields($table);

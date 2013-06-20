@@ -36,12 +36,14 @@ class ClassInfo {
 	 * @todo Move this to SS_Database or DB
 	 */
 	public static function hasTable($class) {
-		if(DB::isActive()) {
+		if(DB::is_active()) {
 			// Cache the list of all table names to reduce on DB traffic
 			if(empty(self::$_cache_all_tables)) {
 				self::$_cache_all_tables = array();
-				$tables = DB::query(DB::getConn()->allTablesSQL())->column();
-				foreach($tables as $table) self::$_cache_all_tables[strtolower($table)] = true;
+				$tables = DB::get_schema()->tableList();
+				foreach($tables as $table) {
+					self::$_cache_all_tables[strtolower($table)] = true;
+				}
 			}
 			return isset(self::$_cache_all_tables[strtolower($class)]);
 		} else {
@@ -56,10 +58,14 @@ class ClassInfo {
 	
 	/**
 	 * Returns the manifest of all classes which are present in the database.
+	 * 
 	 * @param string $class Class name to check enum values for ClassName field
+	 * @param boolean $includeUnbacked Flag indicating whether or not to include 
+	 * types that don't exist as implemented classes. By default these are excluded.
+	 * @return array List of subclasses
 	 */
 	public static function getValidSubClasses($class = 'SiteTree', $includeUnbacked = false) {
-		$classes = DB::getConn()->enumValuesForField($class, 'ClassName');
+		$classes = DB::get_schema()->enumValuesForField($class, 'ClassName');
 		if (!$includeUnbacked) $classes = array_filter($classes, array('ClassInfo', 'exists'));
 		return $classes;
 	}

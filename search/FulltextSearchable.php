@@ -44,7 +44,7 @@ class FulltextSearchable extends DataExtension {
 	public static function enable($searchableClasses = array('SiteTree', 'File')) {
 		$defaultColumns = array(
 			'SiteTree' => '"Title","MenuTitle","Content","MetaDescription"',
-			'File' => '"Filename","Title","Content"'
+			'File' => '"Title","Filename","Content"'
 		);
 
 		if(!is_array($searchableClasses)) $searchableClasses = array($searchableClasses);
@@ -52,7 +52,7 @@ class FulltextSearchable extends DataExtension {
 			if(!class_exists($class)) continue;
 			
 			if(isset($defaultColumns[$class])) {
-				Config::inst()->update($class, 'create_table_options', array('MySQLDatabase' => 'ENGINE=MyISAM'));
+				Config::inst()->update($class, 'create_table_options', array(MySQLSchemaManager::ID => 'ENGINE=MyISAM'));
 				$class::add_extension("FulltextSearchable('{$defaultColumns[$class]}')");
 			} else {
 				throw new Exception(
