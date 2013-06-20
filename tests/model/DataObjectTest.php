@@ -185,8 +185,16 @@ class DataObjectTest extends SapphireTest {
 		$this->assertEquals('Bob', $comment->Name);
 		$comment = DataObject::get_one('DataObjectTest_TeamComment', '', true, '"Name" DESC');
 		$this->assertEquals('Phil', $comment->Name);
-
+	}
+	
+	public function testGetCaseInsensitive() {
 		// Test get_one() with bad case on the classname
+		// Note: This will succeed only if the underlying DB server supports case-insensitive
+		// table names (e.g. such as MySQL, but not SQLite3)
+		if(!(DB::get_conn() instanceof MySQLDatabase)) {
+			$this->markTestSkipped('MySQL only');
+		}
+		
 		$subteam1 = DataObject::get_one('dataobjecttest_subteam', array(
 			'"DataObjectTest_Team"."Title"' => 'Subteam 1'
 		), true);
