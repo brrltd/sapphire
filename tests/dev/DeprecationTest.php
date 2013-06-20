@@ -29,7 +29,7 @@ class DeprecationTest extends SapphireTest {
 	}
 
 	/**
-     * @expectedException PHPUnit_Framework_Error
+	 * @expectedException PHPUnit_Framework_Error
 	 */
 	public function testEqualVersionTriggersNotice() {
 		Deprecation::notification_version('2.0.0');
@@ -43,7 +43,7 @@ class DeprecationTest extends SapphireTest {
 	}
 
 	/**
-    * @expectedException PHPUnit_Framework_Error
+	 * @expectedException PHPUnit_Framework_Error
 	 */
 	public function testGreaterVersionTriggersNotice() {
 		Deprecation::notification_version('3.0.0');
@@ -58,7 +58,7 @@ class DeprecationTest extends SapphireTest {
 	}
 
 	/**
-    * @expectedException PHPUnit_Framework_Error
+	 * @expectedException PHPUnit_Framework_Error
 	 */
 	public function testMatchingModuleNotifcationVersionAffectsNotice() {
 		Deprecation::notification_version('1.0.0');

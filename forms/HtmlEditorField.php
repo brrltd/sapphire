@@ -230,7 +230,10 @@ class HtmlEditorField_Toolbar extends RequestHandler {
 	 * @return callback
 	 */	
 	public function siteTreeSearchCallback($sourceObject, $labelField, $search) {
-		return DataObject::get($sourceObject, "\"MenuTitle\" LIKE '%$search%' OR \"Title\" LIKE '%$search%'");
+		return DataObject::get($sourceObject)->filterAny(array(
+			'MenuTitle:PartialMatch' => $search,
+			'Title:PartialMatch' => $search
+		));
 	}
 	
 	/**
@@ -727,12 +730,8 @@ class HtmlEditorField_Toolbar extends RequestHandler {
 	 * @return DataList
 	 */
 	protected function getFiles($parentID = null) {
-		// TODO Use array('Filename:EndsWith' => $exts) once that's supported
 		$exts = $this->getAllowedExtensions();
-		$wheres = array();
-		foreach($exts as $ext) $wheres[] = '"Filename" LIKE \'%.' . $ext . '\'';
-
-		$files = File::get()->where(implode(' OR ', $wheres));
+		$files = File::get()->filter('Filename:EndsWith', $exts);
 		
 		// Limit by folder (if required)
 		if($parentID) {

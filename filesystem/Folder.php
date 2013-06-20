@@ -59,14 +59,10 @@ class Folder extends File {
 		$item = null;
 		foreach($parts as $part) {
 			if(!$part) continue; // happens for paths with a trailing slash
-			$item = DataObject::get_one(
-				"Folder", 
-				sprintf(
-					"\"Name\" = '%s' AND \"ParentID\" = %d",
-					Convert::raw2sql($part), 
-					(int)$parentID
-				)
-			);
+			$item = DataObject::get_one("Folder", array(
+				'"File"."Name"' => $part,
+				'"File"."ParentID"' => $parentID
+			));
 			if(!$item) {
 				$item = new Folder();
 				$item->ParentID = $parentID;
@@ -94,19 +90,23 @@ class Folder extends File {
 		$skipped = 0;
 
 		// First, merge any children that are duplicates
-		$duplicateChildrenNames = DB::query("SELECT \"Name\" FROM \"File\""
-			. " WHERE \"ParentID\" = $parentID GROUP BY \"Name\" HAVING count(*) > 1")->column();
+		$duplicateChildrenNames = DB::prepared_query(
+			'SELECT "Name" FROM "File" WHERE "ParentID" = ? GROUP BY "Name" HAVING count(*) > 1',
+			array($parentID)
+		)->column();
 		if($duplicateChildrenNames) foreach($duplicateChildrenNames as $childName) {
-			$childName = Convert::raw2sql($childName);
 			// Note, we do this in the database rather than object-model; otherwise we get all sorts of problems
 			// about deleting files
-			$children = DB::query("SELECT \"ID\" FROM \"File\""
-				. " WHERE \"Name\" = '$childName' AND \"ParentID\" = $parentID")->column();
+			$children = DB::prepared_query(
+				'SELECT "ID" FROM "File" WHERE "Name" = ? AND "ParentID" = ?', 
+				array($childName, $parentID)
+			)->column();
 			if($children) {
 				$keptChild = array_shift($children);
 				foreach($children as $removedChild) {
-					DB::query("UPDATE \"File\" SET \"ParentID\" = $keptChild WHERE \"ParentID\" = $removedChild");
-					DB::query("DELETE FROM \"File\" WHERE \"ID\" = $removedChild");
+					DB::prepared_query('UPDATE "File" SET "ParentID" = ? WHERE "ParentID" = ?',
+										array($keptChild, $removedChild));
+					DB::prepared_query('DELETE FROM "File" WHERE "ID" = ?', array($removedChild));
 				}
 			} else {
 				user_error("Inconsistent database issue: SELECT ID FROM \"File\" WHERE Name = '$childName'"
@@ -117,7 +117,7 @@ class Folder extends File {
 		
 		// Get index of database content
 		// We don't use DataObject so that things like subsites doesn't muck with this.
-		$dbChildren = DB::query("SELECT * FROM \"File\" WHERE \"ParentID\" = $parentID");
+		$dbChildren = DB::prepared_query('SELECT * FROM "File" WHERE "ParentID" = ?', array($parentID));
 		$hasDbChild = array();
 
 		if($dbChildren) {
@@ -170,7 +170,7 @@ class Folder extends File {
 					$child = $hasDbChild[$actualChild];
 					if(( !( $child instanceof Folder ) && is_dir($baseDir . $actualChild) ) 
 					|| (( $child instanceof Folder ) && !is_dir($baseDir . $actualChild)) ) {
-						DB::query("DELETE FROM \"File\" WHERE \"ID\" = $child->ID");
+						DB::prepared_query('DELETE FROM "File" WHERE "ID" = ?', array($child->ID));
 						unset($hasDbChild[$actualChild]);						
 					}
 				}
@@ -199,11 +199,11 @@ class Folder extends File {
 			
 			// Iterate through the unwanted children, removing them all
 			if(isset($unwantedDbChildren)) foreach($unwantedDbChildren as $unwantedDbChild) {
-				DB::query("DELETE FROM \"File\" WHERE \"ID\" = $unwantedDbChild->ID");
+				DB::prepared_query('DELETE FROM "File" WHERE "ID" = ?', array($unwantedDbChild->ID));
 				$deleted++;
 			}
 		} else {
-			DB::query("DELETE FROM \"File\" WHERE \"ID\" = $this->ID");
+			DB::prepared_query('DELETE FROM "File" WHERE "ID" = ?', array($this->ID));
 		}
 		
 		return array(
@@ -217,6 +217,9 @@ class Folder extends File {
 	 * Construct a child of this Folder with the given name.
 	 * It does this without actually using the object model, as this starts messing
 	 * with all the data.  Rather, it does a direct database insert.
+	 * 
+	 * @param string $name Name of the file or folder
+	 * @return integer the ID of the newly saved File record
 	 */
 	public function constructChild($name) {
 		// Determine the class name - File, Folder or Image
@@ -227,20 +230,19 @@ class Folder extends File {
 			$className = File::get_class_for_file_extension(pathinfo($name, PATHINFO_EXTENSION));
 		}
 
-		if(Member::currentUser()) $ownerID = Member::currentUser()->ID;
-		else $ownerID = 0;
+		$ownerID = Member::currentUserID();
 		
-		$filename = Convert::raw2sql($this->Filename . $name);
+		$filename = $this->Filename . $name;
 		if($className == 'Folder' ) $filename .= '/';
-
-		$name = Convert::raw2sql($name);
 		
-		DB::query("INSERT INTO \"File\" 
+		$nowExpression = DB::get_conn()->now();
+		DB::prepared_query("INSERT INTO \"File\" 
 			(\"ClassName\", \"ParentID\", \"OwnerID\", \"Name\", \"Filename\", \"Created\", \"LastEdited\", \"Title\")
-			VALUES ('$className', $this->ID, $ownerID, '$name', '$filename', " 
-			. DB::getConn()->now() . ',' . DB::getConn()->now() . ", '$name')");
+			VALUES (?, ?, ?, ?, ?, $nowExpression, $nowExpression, ?)",
+			array($className, $this->ID, $ownerID, $name, $filename, $name)
+		);
 			
-		return DB::getGeneratedID("File");
+		return DB::get_generated_id("File");
 	}
 
 	/**
@@ -385,37 +387,31 @@ class Folder extends File {
 		parent::deleteDatabaseOnly();
 	}
 	
+	/**
+	 * Returns all children of this folder
+	 * 
+	 * @return DataList
+	 */
 	public function myChildren() {
-		// Ugly, but functional.
-		$ancestors = ClassInfo::ancestry($this->class);
-		foreach($ancestors as $i => $a) {
-			if(isset($baseClass) && $baseClass === -1) {
-				$baseClass = $a;
-				break;
-			}
-			if($a == "DataObject") $baseClass = -1;
-		}
-		
-		$g = DataObject::get($baseClass, "\"ParentID\" = " . $this->ID);
-		return $g;
+		return File::get()->filter("ParentID", $this->ID);
 	}
 	
 	/**
 	 * Returns true if this folder has children
+	 * 
+	 * @return boolean
 	 */
 	public function hasChildren() {
-		return (bool)DB::query("SELECT COUNT(*) FROM \"File\" WHERE ParentID = "
-			. (int)$this->ID)->value();
+		return (boolean)$this->myChildren()->count();
 	}
 
 	/**
 	 * Returns true if this folder has children
+	 * 
+	 * @return boolean
 	 */
 	public function hasChildFolders() {
-		$SQL_folderClasses = Convert::raw2sql(ClassInfo::subclassesFor('Folder'));
-		
-		return (bool)DB::query("SELECT COUNT(*) FROM \"File\" WHERE \"ParentID\" = " . (int)$this->ID
-			. " AND \"ClassName\" IN ('" . implode("','", $SQL_folderClasses) . "')")->value();
+		return (boolean)$this->ChildFolders()->count();
 	}
 	
 	/**
@@ -458,9 +454,11 @@ class Folder extends File {
 
 	/**
 	 * Get the children of this folder that are also folders.
+	 * 
+	 * @return DataList
 	 */
 	public function ChildFolders() {
-		return DataObject::get("Folder", "\"ParentID\" = " . (int)$this->ID);
+		return Folder::get()->filter("ParentID", $this->ID);
 	}
 	
 	/**
