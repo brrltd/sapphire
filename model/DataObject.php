@@ -176,7 +176,6 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 	 * Static caches used by relevant functions.
 	 */
 	public static $cache_has_own_table = array();
-	public static $cache_has_own_table_field = array();
 	protected static $_cache_db = array();
 	protected static $_cache_get_one;
 	protected static $_cache_get_class_ancestry;
@@ -241,37 +240,50 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 	public static function clear_classname_spec_cache() {
 		self::$classname_spec_cache = array();
 	}
+	
+	/**
+	 * Determines the specification for the ClassName field for the given class
+	 * 
+	 * @param string $class
+	 * @param boolean $queryDB Determine if the DB may be queried for additional information
+	 * @return string
+	 */
+	public static function get_classname_spec($class, $queryDB = true) {
+		
+		// Check cache
+		if(!empty(self::$classname_spec_cache[$class])) return self::$classname_spec_cache[$class];
+		
+		// Build known class names
+		$classNames = ClassInfo::subclassesFor($class);
+		
+		// Enhance with existing classes in order to prevent legacy details being lost
+		if($queryDB && DB::get_schema()->hasField($class, 'ClassName')) {
+			$existing = DB::query("SELECT DISTINCT \"ClassName\" FROM \"$class\"")->column();
+			$classNames = array_unique(array_merge($classNames, $existing));
+		}
+		$spec = "Enum('" . implode(', ', $classNames) . "')";
+		
+		// Only cache full information if queried
+		if($queryDB) self::$classname_spec_cache[$class] = $spec;
+		return $spec;
+	}
 
 	/**
 	 * Return the complete map of fields on this object, including "Created", "LastEdited" and "ClassName".
 	 * See {@link custom_database_fields()} for a getter that excludes these "base fields".
 	 *
 	 * @param string $class
+	 * @param boolean $queryDB Determine if the DB may be queried for additional information
 	 * @return array
 	 */
-	public static function database_fields($class) {
+	public static function database_fields($class, $queryDB = true) {
 		if(get_parent_class($class) == 'DataObject') {
-			if(empty(self::$classname_spec_cache[$class])) {
-				$classNames = ClassInfo::subclassesFor($class);
-
-				if(DB::get_schema()->hasField($class, 'ClassName')) {
-					$existing = DB::query("SELECT DISTINCT \"ClassName\" FROM \"$class\"")->column();
-					// Maintain natural order (i.e. that returned by ClassInfo::subclasessFor)
-					// in order to prevent subsequent database updates rearranging this list
-					$classNames = array_unique(array_merge($classNames, $existing));
-				}
-
-				self::$classname_spec_cache[$class] = "Enum('" . implode(', ', $classNames) . "')";
-			}
-
-			return array_merge (
-				// TODO: should this be using self::$fixed_fields? only difference is ID field
-				// and ClassName creates an Enum with all values
-				array (
-					'ClassName'  => self::$classname_spec_cache[$class],
-					'Created'    => 'SS_Datetime',
-					'LastEdited' => 'SS_Datetime'
-				),
+			// Merge fixed with ClassName spec and custom db fields
+			$fixed = self::$fixed_fields;
+			unset($fixed['ID']);
+			return array_merge(
+				$fixed,
+				array('ClassName' => self::get_classname_spec($class, $queryDB)),
 				self::custom_database_fields($class)
 			);
 		}
@@ -327,6 +339,11 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 	/**
 	 * Returns the field class if the given db field on the class is a composite field.
 	 * Will check all applicable ancestor classes and aggregate results.
+	 * 
+	 * @param string $class Class to check
+	 * @param string $name Field to check
+	 * @param boolean $aggregated True if parent classes should be checked, or false to limit to this class
+	 * @return string Class name of composite field if it exists
 	 */
 	public static function is_composite_field($class, $name, $aggregated = true) {
 		if(!isset(DataObject::$_cache_composite_fields[$class])) self::cache_composite_fields($class);
@@ -1221,15 +1238,14 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 				$manipulation[$class] = array();
 
 				// Extract records for this table
-				$classSingleton = singleton($class);
 				foreach($this->record as $fieldName => $fieldValue) {
 
 					// Check if this record pertains to this table, and
 					// we're not attempting to reset the BaseTable->ID
-					$fieldType = $classSingleton->hasOwnTableDatabaseField($fieldName);
-					if(	empty($this->changed[$fieldName]) 
-						|| !$fieldType
+					if(	empty($this->changed[$fieldName])
 						|| ($class === $baseTable && $fieldName === 'ID')
+						|| (!self::has_own_table_database_field($class, $fieldName)
+							&& !self::is_composite_field($class, $fieldName, false))
 					) {
 						continue;
 					}
@@ -2181,7 +2197,7 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 
 		// Add SQL for fields, both simple & multi-value
 		// TODO: This is copy & pasted from buildSQL(), it could be moved into a method
-		$databaseFields = self::database_fields($tableClass);
+		$databaseFields = self::database_fields($tableClass, false);
 		if($databaseFields) foreach($databaseFields as $k => $v) {
 			if(!isset($this->record[$k]) || $this->record[$k] === null) {
 				$columns[] = $k;
@@ -2410,47 +2426,28 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 	 * @return string The field type of the given field
 	 */
 	public function hasOwnTableDatabaseField($field) {
-		// Add base fields which are not defined in static $db
-		if($field == "ID") return "Int";
-		if($field == "ClassName" && get_parent_class($this) == "DataObject") return "Enum";
-		if($field == "LastEdited" && get_parent_class($this) == "DataObject") return "SS_Datetime";
-		if($field == "Created" && get_parent_class($this) == "DataObject") return "SS_Datetime";
-
-		// Add fields from Versioned extension
-		if($field == 'Version' && $this->hasExtension('Versioned')) { 
-			return 'Int';
-		}
-		// get cached fieldmap
-		$fieldMap = isset(DataObject::$cache_has_own_table_field[$this->class]) 
-			? DataObject::$cache_has_own_table_field[$this->class] : null;
+		return self::has_own_table_database_field($this->class, $field);
+	}
+	
+	/**
+	 * Returns the field type of the given field, if it belongs to this class, and not a parent.
+	 * Note that the field type will not include constructor arguments in round brackets, only the classname.
+	 * 
+	 * @param string $class Class name to check
+	 * @param string $field Name of the field
+	 * @return string The field type of the given field
+	 */
+	public static function has_own_table_database_field($class, $field) {
 		
-		// if no fieldmap is cached, get all fields
-		if(!$fieldMap) {
-			$fieldMap = Config::inst()->get($this->class, 'db', Config::UNINHERITED);
-			
-			// all $db fields on this specific class (no parents)
-			foreach(self::composite_fields($this->class, false) as $fieldname => $fieldtype) {
-				$combined_db = singleton($fieldtype)->compositeDatabaseFields();
-				foreach($combined_db as $name => $type){
-					$fieldMap[$fieldname.$name] = $type;
-				}
-			}
-			
-			// all has_one relations on this specific class,
-			// add foreign key
-			$hasOne = Config::inst()->get($this->class, 'has_one', Config::UNINHERITED);
-			if($hasOne) foreach($hasOne as $fieldName => $fieldSchema) {
-				$fieldMap[$fieldName . 'ID'] = "ForeignKey";
-			}
-
-			// set cached fieldmap
-			DataObject::$cache_has_own_table_field[$this->class] = $fieldMap;
-		}
+		if($field == "ID") return "Int";
+		
+		$fieldMap = self::database_fields($class, false);
 
 		// Remove string-based "constructor-arguments" from the DBField definition
 		if(isset($fieldMap[$field])) {
-			if(is_string($fieldMap[$field])) return strtok($fieldMap[$field],'(');
-			else return $fieldMap[$field]['type'];
+			$spec = $fieldMap[$field];
+			if(is_string($spec)) return strtok($spec,'(');
+			else return $spec['type'];
 		}
 	}
 	
@@ -2664,10 +2661,10 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 		// Special case for ClassName
 		} else if($fieldName == 'ClassName') {
 			$val = get_class($this);
-			return DBField::create_field('Varchar', $val, $fieldName, $this);
+			return DBField::create_field('Varchar', $val, $fieldName);
 
 		} else if(array_key_exists($fieldName, self::$fixed_fields)) {
-			return DBField::create_field(self::$fixed_fields[$fieldName], $this->$fieldName, $fieldName, $this);
+			return DBField::create_field(self::$fixed_fields[$fieldName], $this->$fieldName, $fieldName);
 
 		// General casting information for items in $db
 		} else if($helper = $this->db($fieldName)) {
@@ -2889,11 +2886,8 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 	public static function get_one($callerClass, $filter = "", $cache = true, $orderby = "") {
 		$SNG = singleton($callerClass);
 
-		$cacheKey = var_export($filter, true)."-{$orderby}";
-		if($extra = $SNG->extend('cacheKeyComponent')) {
-			$cacheKey .= '-' . implode("-", $extra);
-		}
-		$cacheKey = md5($cacheKey);
+		$cacheComponents = array($filter, $orderby, $SNG->extend('cacheKeyComponent'));
+		$cacheKey = md5(var_export($cacheComponents, true));
 		
 		// Flush destroyed items out of the cache
 		if($cache && isset(DataObject::$_cache_get_one[$callerClass][$cacheKey]) 
@@ -2959,8 +2953,8 @@ class DataObject extends ViewableData implements DataObjectInterface, i18nEntity
 	 * Reset all global caches associated with DataObject.
 	 */
 	public static function reset() {
+		DataObject::$classname_spec_cache = array();
 		DataObject::$cache_has_own_table = array();
-		DataObject::$cache_has_own_table_field = array();
 		DataObject::$_cache_db = array();
 		DataObject::$_cache_get_one = array();
 		DataObject::$_cache_composite_fields = array();

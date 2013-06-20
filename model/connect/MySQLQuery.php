@@ -35,7 +35,7 @@ class MySQLQuery extends SS_Query {
 	 * @param mysqli_result $handle the internal mysql handle that is points to the resultset.
 	 * @param mysqli_stmt $statement The related statement, if present
 	 */
-	public function __construct(MySQLiConnector $database, mysqli_result $handle = null, mysqli_stmt $statement = null) {
+	public function __construct(MySQLiConnector $database, $handle = null, $statement = null) {
 		$this->database = $database;
 		$this->handle = $handle;
 		$this->statement = $statement;
@@ -43,7 +43,8 @@ class MySQLQuery extends SS_Query {
 
 	public function __destruct() {
 		if (is_object($this->handle)) $this->handle->free();
-		if (is_object($this->statement)) $this->statement->close();
+		// Don't close statement as these may be re-used across the life of this request
+		// if (is_object($this->statement)) $this->statement->close();
 	}
 
 	public function seek($row) {

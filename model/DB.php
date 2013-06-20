@@ -395,7 +395,7 @@ class DB {
 	/**
 	 * @deprecated since version 3.2 Use DB::create_database instead
 	 */
-	public static function createDatabase($database) {
+	public static function createDatabase($connect, $username, $password, $database) {
 		Deprecation::notice('3.2', 'Use DB::create_database instead');
 		return self::create_database($database);
 	}
@@ -406,11 +406,15 @@ class DB {
 	 * @param array$fields A map of field names to field types
 	 * @param array $indexes A map of indexes
 	 * @param array $options An map of additional options.  The available keys are as follows:
-	 *   - 'MSSQLDatabase'/'MySQLDatabase'/'PostgreSQLDatabase' - database-specific options such as "engine" for MySQL.
+	 *   - 'MSSQLDatabase'/'MySQLDatabase'/'PostgreSQLDatabase' - database-specific options such as "engine"
+	 *     for MySQL.
 	 *   - 'temporary' - If true, then a temporary table will be created
-	 * @return string The table name generated.  This may be different from the table name, for example with temporary tables.
+	 * @return string The table name generated.  This may be different from the table name, for example with
+	 * temporary tables.
 	 */
-	public static function create_table($table, $fields = null, $indexes = null, $options = null, $advancedOptions = null) {
+	public static function create_table($table, $fields = null, $indexes = null, $options = null,
+		$advancedOptions = null
+	) {
 		return self::get_schema()->createTable($table, $fields, $indexes, $options, $advancedOptions);
 	}
 	
@@ -455,14 +459,19 @@ class DB {
 	 * @param string $options SQL statement to append to the CREATE TABLE call.
 	 * @param array $extensions List of extensions
 	 */
-	public static function require_table($table, $fieldSchema = null, $indexSchema = null, $hasAutoIncPK = true, $options = null, $extensions=null) {
-		return self::get_schema()->requireTable($table, $fieldSchema, $indexSchema, $hasAutoIncPK, $options, $extensions);
+	public static function require_table($table, $fieldSchema = null, $indexSchema = null, $hasAutoIncPK = true,
+		$options = null, $extensions = null
+	) {
+		return self::get_schema()->requireTable($table, $fieldSchema, $indexSchema, $hasAutoIncPK, $options,
+												$extensions);
 	}
 	
 	/**
 	 * @deprecated since version 3.2 Use DB::require_table instead
 	 */
-	public static function requireTable($table, $fieldSchema = null, $indexSchema = null, $hasAutoIncPK = true, $options = null, $extensions = null) {
+	public static function requireTable($table, $fieldSchema = null, $indexSchema = null, $hasAutoIncPK = true,
+		$options = null, $extensions = null
+	) {
 		Deprecation::notice('3.2', 'Use DB::require_table instead');
 		return self::require_table($table, $fieldSchema, $indexSchema, $hasAutoIncPK, $options, $extensions);
 	}

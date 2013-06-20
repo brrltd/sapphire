@@ -25,7 +25,7 @@ class ClassInfo {
 	/**
 	 * Cache for {@link hasTable()}
 	 */
-	private static $_cache_all_tables = null;
+	private static $_cache_all_tables = array();
 
 	/**
 	 * @var Array Cache for {@link ancestry()}.
@@ -36,19 +36,11 @@ class ClassInfo {
 	 * @todo Move this to SS_Database or DB
 	 */
 	public static function hasTable($class) {
-		if(DB::is_active()) {
-			// Cache the list of all table names to reduce on DB traffic
-			if(empty(self::$_cache_all_tables)) {
-				self::$_cache_all_tables = array();
-				$tables = DB::get_schema()->tableList();
-				foreach($tables as $table) {
-					self::$_cache_all_tables[strtolower($table)] = true;
-				}
-			}
-			return isset(self::$_cache_all_tables[strtolower($class)]);
-		} else {
-			return false;
+		// Cache the list of all table names to reduce on DB traffic
+		if(empty(self::$_cache_all_tables) && DB::is_active()) {
+			self::$_cache_all_tables = DB::get_schema()->tableList();
 		}
+		return !empty(self::$_cache_all_tables[strtolower($class)]);
 	}
 	
 	public static function reset_db_cache() {
@@ -72,7 +64,7 @@ class ClassInfo {
 
 	/**
 	 * Returns an array of the current class and all its ancestors and children
-	 * which have a DB table.
+	 * which require a DB table.
 	 * 
 	 * @param string|object $class
 	 * @todo Move this into data object
@@ -87,10 +79,11 @@ class ClassInfo {
 
 		$classes = array_merge(
 			self::ancestry($class),
-			self::subclassesFor($class));
+			self::subclassesFor($class)
+		);
 
 		foreach ($classes as $class) {
-			if (self::hasTable($class)) $result[$class] = $class;
+			if (DataObject::has_own_table($class)) $result[$class] = $class;
 		}
 
 		return $result;

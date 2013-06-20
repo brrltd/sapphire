@@ -234,7 +234,8 @@ abstract class SS_Database {
 					break;
 
 				default:
-					user_error("SS_Database::manipulate() Can't recognise command '{$writeInfo['command']}'", E_USER_ERROR);
+					user_error("SS_Database::manipulate() Can't recognise command '{$writeInfo['command']}'",
+								E_USER_ERROR);
 			}
 		}
 	}
@@ -279,7 +280,8 @@ abstract class SS_Database {
 	 * given value. If this is true then $value is ignored.
 	 * @return String SQL
 	 */
-	abstract public function comparisonClause($field, $value, $exact = false, $negate = false, $caseSensitive = null, $parameterised = false);
+	abstract public function comparisonClause($field, $value, $exact = false, $negate = false, $caseSensitive = null,
+											$parameterised = false);
 
 	/**
 	 * function to return an SQL datetime expression that can be used with the adapter in use
@@ -388,7 +390,8 @@ abstract class SS_Database {
 	 * @param boolean $invertedMatch
 	 * @return PaginatedList Search results
 	 */
-	abstract function searchEngine($classesToSearch, $keywords, $start, $pageLength, $sortBy = "Relevance DESC", $extraFilter = "", $booleanSearch = false, $alternativeFileFilter = "", $invertedMatch = false);
+	abstract function searchEngine($classesToSearch, $keywords, $start, $pageLength, $sortBy = "Relevance DESC",
+		$extraFilter = "", $booleanSearch = false, $alternativeFileFilter = "", $invertedMatch = false);
 
 	/**
 	 * Determines if this database supports transactions
@@ -555,7 +558,8 @@ abstract class SS_Database {
 	 * @param boolean $create Flag indicating whether the database should be created
 	 * if it doesn't exist. If $create is false and the database doesn't exist
 	 * then an error will be raised
-	 * @param int|boolean $errorLevel The level of error reporting to enable for the query, or false if no error should be raised
+	 * @param int|boolean $errorLevel The level of error reporting to enable for the query, or false if no error
+	 * should be raised
 	 * @return boolean Flag indicating success
 	 */
 	public function selectDatabase($name, $create = false, $errorLevel = E_USER_ERROR) {
@@ -608,6 +612,14 @@ abstract class SS_Database {
 	 * @return string Expression for a random value
 	 */
 	abstract public function random();
+	
+	/**
+	 * @deprecated since version 3.2 Use DB::get_schema()->dbDataType($type) instead
+	 */
+	public function dbDataType($type){
+		Deprecation::notice('3.2', 'Use DB::get_schema()->dbDataType($type) instead');
+		return $this->getSchemaManager()->dbDataType($type);
+	}
 	
 	/**
 	 * @deprecated since version 3.2 Use selectDatabase('dbname', true) instead

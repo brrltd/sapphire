@@ -105,7 +105,9 @@ class MySQLDatabase extends SS_Database {
 	 *
 	 * @param string $keywords Keywords as a string.
 	 */
-	public function searchEngine($classesToSearch, $keywords, $start, $pageLength, $sortBy = "Relevance DESC", $extraFilter = "", $booleanSearch = false, $alternativeFileFilter = "", $invertedMatch = false) {
+	public function searchEngine($classesToSearch, $keywords, $start, $pageLength, $sortBy = "Relevance DESC",
+		$extraFilter = "", $booleanSearch = false, $alternativeFileFilter = "", $invertedMatch = false
+	) {
 
 		if (!class_exists('SiteTree'))
 				throw new Exception('MySQLDatabase->searchEngine() requires "SiteTree" class');
@@ -261,7 +263,9 @@ class MySQLDatabase extends SS_Database {
 						: 'NO ') . 'CHAIN;');
 	}
 
-	public function comparisonClause($field, $value, $exact = false, $negate = false, $caseSensitive = null, $parameterised = false) {
+	public function comparisonClause($field, $value, $exact = false, $negate = false, $caseSensitive = null,
+		$parameterised = false
+	) {
 		if ($exact && $caseSensitive === null) {
 			$comp = ($negate) ? '!=' : '=';
 		} else {

@@ -50,19 +50,31 @@ class ExactMatchFilter extends SearchFilter {
 	 */
 	protected function applyMany(DataQuery $query) {
 		$this->model = $query->applyRelation($this->relation);
-		$whereClause = array();
-		foreach($this->getValue() as $value) {
-			$predicate = DB::get_conn()->comparisonClause(
+		$caseSensitive = $this->getCaseSensitive();
+		$values = $this->getValue();
+		if($caseSensitive === null) {
+			// For queries using the default collation (no explicit case) we can use the WHERE .. IN .. syntax,
+			// providing simpler SQL than many WHERE .. OR .. fragments.
+			$column = $this->getDbName();
+			$placeholders = DB::placeholders($values);
+			return $query->where(array(
+				"$column IN ($placeholders)" => $values
+			));
+		} else {
+			$whereClause = array();
+			$comparisonClause = DB::get_conn()->comparisonClause(
 				$this->getDbName(),
 				null,
 				true, // exact?
 				false, // negate?
-				$this->getCaseSensitive(),
+				$caseSensitive,
 				true
 			);
-			$whereClause[] = array($predicate => $value);
+			foreach($values as $value) {
+				$whereClause[] = array($comparisonClause => $value);
+			}
+			return $query->whereAny($whereClause);
 		}
-		return $query->whereAny($whereClause);
 	}
 
 	/**
@@ -91,10 +103,19 @@ class ExactMatchFilter extends SearchFilter {
 	 */
 	protected function excludeMany(DataQuery $query) {
 		$this->model = $query->applyRelation($this->relation);
-		$predicates = array();
-		$parameters = array();
-		foreach($this->getValue() as $value) {
-			$predicates[] = DB::get_conn()->comparisonClause(
+		$caseSensitive = $this->getCaseSensitive();
+		$values = $this->getValue();
+		if($caseSensitive === null) {
+			// For queries using the default collation (no explicit case) we can use the WHERE .. NOT IN .. syntax,
+			// providing simpler SQL than many WHERE .. AND .. fragments.
+			$column = $this->getDbName();
+			$placeholders = DB::placeholders($values);
+			return $query->where(array(
+				"$column NOT IN ($placeholders)" => $values
+			));
+		} else {
+			// Generate reusable comparison clause
+			$comparisonClause = DB::get_conn()->comparisonClause(
 				$this->getDbName(),
 				null,
 				true, // exact?
@@ -102,9 +123,11 @@ class ExactMatchFilter extends SearchFilter {
 				$this->getCaseSensitive(),
 				true
 			);
-			$parameters[] = $value;
+			// Since query connective is ambiguous, use AND explicitly here
+			$count = count($values);
+			$predicate = implode(' AND ', array_fill(0, $count, $comparisonClause));
+			return $query->where(array($predicate => $values));
 		}
-		return $query->where(array(implode(' AND ', $predicates) => $parameters));
 	}
 	
 	public function isEmpty() {

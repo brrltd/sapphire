@@ -214,9 +214,9 @@ class CsvBulkLoader extends BulkLoader {
 
 				// Check existing record with this value
 				$dbFieldValue = $record[$duplicateCheck];
-				$existingRecord = DataObject::get_one($this->objectClass, array(
-					"\"$duplicateCheck\"" => $dbFieldValue
-				));
+				$existingRecord = DataObject::get($this->objectClass)
+					->filter($duplicateCheck, $dbFieldValue)
+					->first();
 				
 				if($existingRecord) return $existingRecord;
 			} elseif(is_array($duplicateCheck) && isset($duplicateCheck['callback'])) {

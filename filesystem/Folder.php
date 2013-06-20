@@ -104,7 +104,8 @@ class Folder extends File {
 			if($children) {
 				$keptChild = array_shift($children);
 				foreach($children as $removedChild) {
-					DB::prepared_query('UPDATE "File" SET "ParentID" = ? WHERE "ParentID" = ?', array($keptChild, $removedChild));
+					DB::prepared_query('UPDATE "File" SET "ParentID" = ? WHERE "ParentID" = ?',
+										array($keptChild, $removedChild));
 					DB::prepared_query('DELETE FROM "File" WHERE "ID" = ?', array($removedChild));
 				}
 			} else {
@@ -386,33 +387,31 @@ class Folder extends File {
 		parent::deleteDatabaseOnly();
 	}
 	
+	/**
+	 * Returns all children of this folder
+	 * 
+	 * @return DataList
+	 */
 	public function myChildren() {
-		return File::get()->where(array(
-			'"File"."ParentID"' => $this->ID
-		));
+		return File::get()->filter("ParentID", $this->ID);
 	}
 	
 	/**
 	 * Returns true if this folder has children
+	 * 
+	 * @return boolean
 	 */
 	public function hasChildren() {
-		$result = DB::prepared_query(
-			'SELECT COUNT(*) FROM "File" WHERE ParentID = ?',
-			array($this->ID)
-		)->value();
-		return (boolean)$result;
+		return (boolean)$this->myChildren()->count();
 	}
 
 	/**
 	 * Returns true if this folder has children
+	 * 
+	 * @return boolean
 	 */
 	public function hasChildFolders() {
-		$subclasses = ClassInfo::subclassesFor('Folder');
-		$subclassesPlaceholders = DB::placeholders($subclasses);
-		return (bool)DB::prepared_query(
-			"SELECT COUNT(*) FROM \"File\" WHERE \"ParentID\" = ? AND \"ClassName\" IN ($subclassesPlaceholders)",
-			array_merge(array($this->ID), $subclasses)
-		)->value();
+		return (boolean)$this->ChildFolders()->count();
 	}
 	
 	/**
@@ -455,11 +454,11 @@ class Folder extends File {
 
 	/**
 	 * Get the children of this folder that are also folders.
+	 * 
+	 * @return DataList
 	 */
 	public function ChildFolders() {
-		return Folder::get()->where(array(
-			'"File"."ParentID"' => $this->ID
-		));
+		return Folder::get()->filter("ParentID", $this->ID);
 	}
 	
 	/**

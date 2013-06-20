@@ -158,7 +158,7 @@ class Versioned extends DataExtension {
 	 * Amend freshly created DataQuery objects with versioned-specific 
 	 * information.
 	 *
-	 * @param SQLQuery
+	 * @param SQLSelect
 	 * @param DataQuery
 	 */
 	public function augmentDataQueryCreation(SQLSelect &$query, DataQuery &$dataQuery) {
@@ -193,7 +193,7 @@ class Versioned extends DataExtension {
 		case 'archive':
 			$date = $dataQuery->getQueryParam('Versioned.date');
 			foreach($query->getFrom() as $table => $dummy) {
-				if(!DB::getConn()->hasTable($table . '_versions')) {
+				if(!DB::get_schema()->hasTable($table . '_versions')) {
 					continue;
 				}
 
@@ -1187,7 +1187,7 @@ class Versioned extends DataExtension {
 	 * @param int $limit A limit on the number of records returned from the database.
 	 * @param string $containerClass The container class for the result set (default is DataList)
 	 *
-	 * @return SS_List
+	 * @return DataList A modified DataList designated to the specified stage
 	 */
 	public static function get_by_stage($class, $stage, $filter = '', $sort = '', $join = '', $limit = '',
 			$containerClass = 'DataList') {

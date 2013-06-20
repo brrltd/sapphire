@@ -51,7 +51,8 @@ abstract class RelationList extends DataList {
 	 * just the related items.
 	 *
 	 * 
-	 * @param array|integer $id (optional) An ID or an array of IDs - if not provided, will use the current ids as per getForeignID
+	 * @param array|integer $id (optional) An ID or an array of IDs - if not provided, will use the current ids as
+	 * per getForeignID
 	 * @return array Condition In array(SQL => parameters format)
 	 */
 	abstract protected function foreignIDFilter($id = null);

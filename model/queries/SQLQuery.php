@@ -13,7 +13,9 @@ class SQLQuery extends SQLSelect {
 	/**
 	 * @deprecated since version 3.2
 	 */
-	public function __construct($select = "*", $from = array(), $where = array(), $orderby = array(), $groupby = array(), $having = array(), $limit = array()) {
+	public function __construct($select = "*", $from = array(), $where = array(), $orderby = array(),
+		$groupby = array(), $having = array(), $limit = array()
+	) {
 		parent::__construct($select, $from, $where, $orderby, $groupby, $having, $limit);
 		Deprecation::notice('3.2', 'Use SQLSelect instead');
 	}

@@ -160,11 +160,11 @@ abstract class SQLConditionalExpression extends SQLExpression {
 	 *
 	 * @param string $table Unquoted table name
 	 * @param string $onPredicate The "ON" SQL fragment in an "INNER JOIN ... AS ... ON ..." statement. Needs to be 
-	 *                            valid (quoted) SQL.
+	 * valid (quoted) SQL.
 	 * @param string $tableAlias Optional alias which makes it easier to identify and replace joins later on
-	 * @param int $order A numerical index to control the order that joins are added to the query; lower order values 
-	 *                   will cause the query to appear first. The default is 20, and joins created automatically by the
-	 *                   ORM have a value of 10.
+	 * @param int $order A numerical index to control the order that joins are added to the query; lower order
+	 * values will cause the query to appear first. The default is 20, and joins created automatically by the
+	 * ORM have a value of 10.
 	 * @return SQLSelect
 	 */
 	public function addInnerJoin($table, $onPredicate, $tableAlias = null, $order = 20) {
@@ -281,7 +281,7 @@ abstract class SQLConditionalExpression extends SQLExpression {
 				}
 
 				$aliasClause = ($alias != $join['table']) ? " AS \"$alias\"" : "";
-				$joins[$alias] = strtoupper($join['type']) . " JOIN \"" . $join['table'] . "\"$aliasClause ON $filter";
+				$joins[$alias] = strtoupper($join['type']) . ' JOIN "' . $join['table'] . "\"$aliasClause ON $filter";
 			}
 		}
 		
@@ -301,12 +301,17 @@ abstract class SQLConditionalExpression extends SQLExpression {
 		// shift the first FROM table out from so we only deal with the JOINs
 		$baseFrom = array_shift($from);
 		$this->mergesort($from, function($firstJoin, $secondJoin) {
-			if($firstJoin['order'] == $secondJoin['order']) {
+			if(
+				!is_array($firstJoin) 
+				|| !is_array($secondJoin)
+				|| $firstJoin['order'] == $secondJoin['order']
+			) {
 				return 0;
+			} else {
+				return ($firstJoin['order'] < $secondJoin['order']) ?  -1 : 1;
 			}
-			return ($firstJoin['order'] < $secondJoin['order']) ?  -1 : 1;
 		});
-		
+
 		// Put the first FROM table back into the results 
 		array_unshift($from, $baseFrom);
 		return $from;
@@ -567,7 +572,8 @@ abstract class SQLConditionalExpression extends SQLExpression {
 				if($parameterCount === 1) {
 					$key .= " = ?";
 				} elseif($parameterCount > 1) {
-					user_error("Incorrect number of '?' in predicate $key. Expected $parameterCount but none given.", E_USER_ERROR);
+					user_error("Incorrect number of '?' in predicate $key. Expected $parameterCount but none given.",
+						E_USER_ERROR);
 				}
 			}
 			return array($key => $parameters);
@@ -576,7 +582,8 @@ abstract class SQLConditionalExpression extends SQLExpression {
 			// If predicates are nested one per array (as per the internal format)
 			// then run a quick check over the contents and recursively parse
 			if(count($value) != 1) {
-				user_error('Nested predicates should be given as a single item array in array($predicate => array($prameters)) format)', E_USER_ERROR);
+				user_error('Nested predicates should be given as a single item array in '
+						.  'array($predicate => array($prameters)) format)', E_USER_ERROR);
 			}
 			foreach($value as $key => $value) {
 				return $this->parsePredicate($key, $value);

@@ -28,7 +28,10 @@ class SQLInsertTest extends SapphireTest {
 		$sql = $query->sql($parameters);
 		// Only test this case if using the default query builder
 		if(get_class(DB::get_conn()->getQueryBuilder()) === 'DBQueryBuilder') {
-			$this->assertSQLEquals('INSERT INTO "SQLInsertTestBase" ("Title", "HasFun", "Age", "Description") VALUES (?, ?, ?, ?)', $sql);
+			$this->assertSQLEquals(
+				'INSERT INTO "SQLInsertTestBase" ("Title", "HasFun", "Age", "Description") VALUES (?, ?, ?, ?)',
+				$sql
+			);
 		}
 		$this->assertEquals(array('My Object', 1, 10, 'No description'), $parameters);
 		$query->execute();
@@ -57,7 +60,10 @@ class SQLInsertTest extends SapphireTest {
 		$sql = $query->sql($parameters);
 		// Only test this case if using the default query builder
 		if(get_class(DB::get_conn()->getQueryBuilder()) === 'DBQueryBuilder') {
-			$this->assertSQLEquals('INSERT INTO "SQLInsertTestBase" ("Title", "Age", "Description") VALUES (?, ?, ?), (?, ?, ?)', $sql);
+			$this->assertSQLEquals(
+				'INSERT INTO "SQLInsertTestBase" ("Title", "Age", "Description") VALUES (?, ?, ?), (?, ?, ?)',
+				$sql
+			);
 		}
 		$this->assertEquals(array('First Object', 10, 'First the worst', 'Second object', 12, null), $parameters);
 		$query->execute();
@@ -79,7 +85,7 @@ class SQLInsertTest extends SapphireTest {
 }
 
 class SQLInsertTestBase extends DataObject implements TestOnly {
-	static $db = array(
+	private static $db = array(
 		'Title' => 'Varchar(255)',
 		'HasFun' => 'Boolean',
 		'Age' => 'Int',

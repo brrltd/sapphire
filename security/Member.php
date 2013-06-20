@@ -1524,7 +1524,8 @@ class Member_GroupSet extends ManyManyList {
 	 * Recursively selects all groups applied to this member, as well as any
 	 * parent groups of any applied groups
 	 * 
-	 * @param array|integer $id (optional) An ID or an array of IDs - if not provided, will use the current ids as per getForeignID
+	 * @param array|integer $id (optional) An ID or an array of IDs - if not provided, will use the current
+	 * ids as per getForeignID
 	 * @return array Condition In array(SQL => parameters format)
 	 */
 	public function foreignIDFilter($id = null) {

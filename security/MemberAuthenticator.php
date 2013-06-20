@@ -30,13 +30,13 @@ class MemberAuthenticator extends Authenticator {
 	 * @see Security::setDefaultAdmin()
 	 */
 	public static function authenticate($RAW_data, Form $form = null) {
-		if(!empty($RAW_data['Email'])) {
-			$userEmail = $RAW_data['Email'];
-			if(is_array($userEmail)) {
-				user_error("Bad email passed to MemberAuthenticator::authenticate(): $userEmail", E_USER_WARNING);
-				return false;
-			}
-		} else {
+		
+		// Check for email
+		if(empty($RAW_data['Email'])) return false;
+		
+		$userEmail = $RAW_data['Email'];
+		if(is_array($userEmail)) {
+			user_error("Bad email passed to MemberAuthenticator::authenticate()", E_USER_WARNING);
 			return false;
 		}
 
@@ -46,10 +46,10 @@ class MemberAuthenticator extends Authenticator {
 		if(Security::check_default_admin($userEmail, $RAW_data['Password'])) {
 			$member = Security::findAnAdministrator();
 		} else {
-			$member = DataObject::get_one("Member", array(
-				'"'.Member::config()->unique_identifier_field.'"' => $userEmail,
-				'"Member"."Password" IS NOT NULL'
-			));
+			$member = Member::get()
+				->filter(Member::config()->unique_identifier_field, $userEmail)
+				->where('"Member"."Password" IS NOT NULL')
+				->first();
 
 			if($member) {
 				$result = $member->checkPassword($RAW_data['Password']);
@@ -146,4 +146,3 @@ class MemberAuthenticator extends Authenticator {
 		return _t('MemberAuthenticator.TITLE', "E-mail &amp; Password");
 	}
 }
-

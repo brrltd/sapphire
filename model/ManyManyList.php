@@ -71,7 +71,8 @@ class ManyManyList extends RelationList {
 	 * entries. However some subclasses of ManyManyList (Member_GroupSet) modify foreignIDFilter to
 	 * include additional calculated entries, so we need different filters when reading and when writing
 	 *
-	 * @param array|integer $id (optional) An ID or an array of IDs - if not provided, will use the current ids as per getForeignID
+	 * @param array|integer $id (optional) An ID or an array of IDs - if not provided, will use the current ids
+	 * as per getForeignID
 	 * @return array Condition In array(SQL => parameters format)
 	 */
 	protected function foreignIDWriteFilter($id = null) {

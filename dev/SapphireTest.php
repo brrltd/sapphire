@@ -721,7 +721,9 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 		* @param boolean $canonicalize
 		* @param boolean $ignoreCase
 		*/
-	public function assertSQLEquals($expectedSQL, $actualSQL, $message = '', $delta = 0, $maxDepth = 10, $canonicalize = false, $ignoreCase = false) {
+	public function assertSQLEquals($expectedSQL, $actualSQL, $message = '', $delta = 0, $maxDepth = 10,
+		$canonicalize = false, $ignoreCase = false
+	) {
 		// Normalise SQL queries to remove patterns of repeating whitespace
 		$expectedSQL = $this->normaliseSQL($expectedSQL);
 		$actualSQL = $this->normaliseSQL($actualSQL);
@@ -738,7 +740,9 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 	 * @param boolean $ignoreCase
 	 * @param boolean $checkForObjectIdentity
 	 */
-	public function assertSQLContains($needleSQL, $haystackSQL, $message = '', $ignoreCase = false, $checkForObjectIdentity = true) {
+	public function assertSQLContains($needleSQL, $haystackSQL, $message = '', $ignoreCase = false,
+		$checkForObjectIdentity = true
+	) {
 		$needleSQL = $this->normaliseSQL($needleSQL);
 		$haystackSQL = $this->normaliseSQL($haystackSQL);
 
@@ -754,7 +758,9 @@ class SapphireTest extends PHPUnit_Framework_TestCase {
 	 * @param boolean $ignoreCase
 	 * @param boolean $checkForObjectIdentity
 	 */
-	public function assertSQLNotContains($needleSQL, $haystackSQL, $message = '', $ignoreCase = false, $checkForObjectIdentity = true) {
+	public function assertSQLNotContains($needleSQL, $haystackSQL, $message = '', $ignoreCase = false,
+		$checkForObjectIdentity = true
+	) {
 		$needleSQL = $this->normaliseSQL($needleSQL);
 		$haystackSQL = $this->normaliseSQL($haystackSQL);
 

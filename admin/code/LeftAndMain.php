@@ -1079,14 +1079,11 @@ class LeftAndMain extends Controller implements PermissionProvider {
 			
 			// Update all dependent pages
 			if(class_exists('VirtualPage')) {
-				if($virtualPages = VirtualPage::get()->where(array(
-					'"VirtualPage"."CopyContentFromID"' => $node->ID
-				))) {
-					foreach($virtualPages as $virtualPage) {
-						$statusUpdates['modified'][$virtualPage->ID] = array(
-							'TreeTitle' => $virtualPage->TreeTitle()
-						);
-					}
+				$virtualPages = VirtualPage::get()->filter("CopyContentFromID", $node->ID);
+				foreach($virtualPages as $virtualPage) {
+					$statusUpdates['modified'][$virtualPage->ID] = array(
+						'TreeTitle' => $virtualPage->TreeTitle()
+					);
 				}
 			}
 

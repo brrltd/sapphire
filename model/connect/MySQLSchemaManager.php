@@ -20,10 +20,16 @@ class MySQLSchemaManager extends DBSchemaManager {
 		if (!empty($options[self::ID])) {
 			$addOptions = $options[self::ID];
 		} elseif (!empty($options[get_class($this)])) {
-			Deprecation::notice('3.2', 'Use MySQLSchemaManager::ID for referencing mysql-specific table creation options');
+			Deprecation::notice(
+				'3.2',
+				'Use MySQLSchemaManager::ID for referencing mysql-specific table creation options'
+			);
 			$addOptions = $options[get_class($this)];
 		} elseif (!empty($options[get_parent_class($this)])) {
-			Deprecation::notice('3.2', 'Use MySQLSchemaManager::ID for referencing mysql-specific table creation options');
+			Deprecation::notice(
+				'3.2',
+				'Use MySQLSchemaManager::ID for referencing mysql-specific table creation options'
+			);
 			$addOptions = $options[get_parent_class($this)];
 		} else {
 			$addOptions = "ENGINE=InnoDB";
@@ -56,7 +62,9 @@ class MySQLSchemaManager extends DBSchemaManager {
 		return $table;
 	}
 
-	public function alterTable($tableName, $newFields = null, $newIndexes = null, $alteredFields = null, $alteredIndexes = null, $alteredOptions = null, $advancedOptions = null) {
+	public function alterTable($tableName, $newFields = null, $newIndexes = null, $alteredFields = null,
+		$alteredIndexes = null, $alteredOptions = null, $advancedOptions = null
+	) {
 
 		if ($this->isView($tableName)) {
 			$this->alterationMessage(
@@ -100,7 +108,11 @@ class MySQLSchemaManager extends DBSchemaManager {
 			}
 			if ($skip) {
 				$this->alterationMessage(
-					sprintf("Table %s options not changed to %s due to fulltextsearch index", $tableName, $alteredOptions[get_class($this)]),
+					sprintf(
+						"Table %s options not changed to %s due to fulltextsearch index",
+						$tableName,
+						$alteredOptions[get_class($this)]
+					),
 					"changed"
 				);
 			} else {
@@ -126,6 +138,13 @@ class MySQLSchemaManager extends DBSchemaManager {
 	}
 
 	public function checkAndRepairTable($tableName) {
+		// If running PDO and not in emulated mode, check table will fail
+		if($this->database->getConnector() instanceof PDOConnector && !PDOConnector::is_emulate_prepare()) {
+			$this->alterationMessage('CHECK TABLE command disabled for PDO in native mode', 'notice');
+			return true;
+		}
+		
+		// Perform check
 		if (!$this->runTableCheckCommand("CHECK TABLE \"$tableName\"")) {
 			if ($this->runTableCheckCommand("CHECK TABLE \"" . strtolower($tableName) . "\"")) {
 				$this->alterationMessage(
@@ -181,7 +200,7 @@ class MySQLSchemaManager extends DBSchemaManager {
 	}
 
 	public function createDatabase($name) {
-		$this->query("CREATE DATABASE \"$name\"");
+		$this->query("CREATE DATABASE \"$name\" DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci");
 	}
 
 	public function dropDatabase($name) {
@@ -530,7 +549,8 @@ class MySQLSchemaManager extends DBSchemaManager {
 		//DB::requireField($this->tableName, $this->name, "varchar($this->size) character set utf8 collate
 		// utf8_general_ci");
 
-		return 'varchar(' . $values['precision'] . ') character set utf8 collate utf8_general_ci' . $this->defaultClause($values);
+		$default = $this->defaultClause($values);
+		return "varchar({$values['precision']}) character set utf8 collate utf8_general_ci$default";
 	}
 
 	/*

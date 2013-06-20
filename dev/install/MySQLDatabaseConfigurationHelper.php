@@ -23,7 +23,8 @@ class MySQLDatabaseConfigurationHelper implements DatabaseConfigurationHelper {
 		try {
 			switch($databaseConfig['type']) {
 				case 'MySQLDatabase':
-					$conn = @new MySQLi($databaseConfig['server'], $databaseConfig['username'], $databaseConfig['password']);
+					$conn = @new MySQLi($databaseConfig['server'], $databaseConfig['username'],
+										$databaseConfig['password']);
 					if($conn && empty($conn->connect_errno)) {
 						$conn->query("SET sql_mode = 'ANSI'");
 						return $conn;
@@ -35,7 +36,8 @@ class MySQLDatabaseConfigurationHelper implements DatabaseConfigurationHelper {
 					}
 				case 'MySQLPDODatabase':
 					// May throw a PDOException if fails
-					$conn = @new PDO('mysql:host='.$databaseConfig['server'], $databaseConfig['username'], $databaseConfig['password']);
+					$conn = @new PDO('mysql:host='.$databaseConfig['server'], $databaseConfig['username'],
+									$databaseConfig['password']);
 					if($conn) {
 						$conn->query("SET sql_mode = 'ANSI'");
 						return $conn;
@@ -162,13 +164,19 @@ class MySQLDatabaseConfigurationHelper implements DatabaseConfigurationHelper {
 	
 	/**
 	 * Determines if a given database name is a valid Silverstripe name.
+	 * This is any database name that is valid in MySQL when unquoted.
 	 * 
 	 * @param string $database Candidate database name
 	 * @return boolean
 	 */
 	public function checkValidDatabaseName($database) {
+		
+		// Reject all-digit names
+		if(preg_match('/^\d+$/', $database)) return false;
+		
+		// Restricted to any 
 		// @see http://dev.mysql.com/doc/refman/5.0/en/identifiers.html
-		return preg_match('/^[\w$]+$/i', $database);
+		return preg_match('/^[0-9,a-z,A-Z$\x{0080}-\x{FFFF}_]+$/u', $database);
 	}
 	
 	/**
@@ -192,7 +200,8 @@ class MySQLDatabaseConfigurationHelper implements DatabaseConfigurationHelper {
 			preg_quote('"%".*'),
 			preg_quote('*.*')
 		);
-		$expression = '/GRANT[ ,\w]+((ALL PRIVILEGES)|('.$permission.'(?! ((VIEW)|(ROUTINE)))))[ ,\w]+ON '.$dbPattern.'/i';
+		$expression = '/GRANT[ ,\w]+((ALL PRIVILEGES)|('.$permission.'(?! ((VIEW)|(ROUTINE)))))[ ,\w]+ON '.
+			$dbPattern.'/i';
 		return preg_match($expression, $grant);
 	}
 	

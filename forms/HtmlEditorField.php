@@ -230,8 +230,9 @@ class HtmlEditorField_Toolbar extends RequestHandler {
 	 * @return callback
 	 */	
 	public function siteTreeSearchCallback($sourceObject, $labelField, $search) {
-		return DataObject::get($sourceObject, array(
-			'"MenuTitle" LIKE ? OR "Title" LIKE ?' => array("%{$search}%", "%{$search}%")
+		return DataObject::get($sourceObject)->filterAny(array(
+			'MenuTitle:PartialMatch' => $search,
+			'Title:PartialMatch' => $search
 		));
 	}
 	

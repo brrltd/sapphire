@@ -14,8 +14,3 @@ Injector:
       connector: %$MySQLiConnector
       schemaManager: %$MySQLSchemaManager
       queryBuilder: %$DBQueryBuilder
----
-name: querybuilder
----
-DBQueryBuilder:
-  format: dev,test

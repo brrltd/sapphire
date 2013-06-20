@@ -24,6 +24,7 @@ class PDOQuery extends SS_Query {
 		// traversed, each statement simply requests all rows at once for safety.
 		// This could be re-engineered to call fetchAll on an as-needed basis
 		$this->results = $statement->fetchAll(PDO::FETCH_ASSOC);
+		$statement->closeCursor();
 	}
 
 	public function __destruct() {

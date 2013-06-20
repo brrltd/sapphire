@@ -183,7 +183,8 @@ class DatabaseAdmin extends Controller {
 			
 			// Check database name is given
 			if(empty($parameters['database'])) {
-				user_error("No database name given; please give a value for \$databaseConfig['database']", E_USER_ERROR);
+				user_error("No database name given; please give a value for \$databaseConfig['database']",
+							E_USER_ERROR);
 			}
 			$database = $parameters['database'];
 			
@@ -207,11 +208,11 @@ class DatabaseAdmin extends Controller {
 		$dbSchema->schemaUpdate(function() use($dataClasses, $testMode, $quiet){
 			foreach($dataClasses as $dataClass) {
 				// Check if class exists before trying to instantiate - this sidesteps any manifest weirdness
-				if(!class_exists($dataClass)) break;
+				if(!class_exists($dataClass)) continue;
 				
 				// Check if this class should be excluded as per testing conventions
 				$SNG = singleton($dataClass);
-				if(!$testMode && $SNG instanceof TestOnly) break;
+				if(!$testMode && $SNG instanceof TestOnly) continue;
 				
 				// Log data
 				if(!$quiet) {
@@ -245,7 +246,10 @@ class DatabaseAdmin extends Controller {
 			}
 		}
 
-		touch(TEMP_FOLDER . '/database-last-generated-' . str_replace(array('\\', '/', ':'), '.', Director::baseFolder()));
+		touch(TEMP_FOLDER
+			. '/database-last-generated-'
+			. str_replace(array('\\', '/', ':'), '.', Director::baseFolder())
+		);
 
 		if(isset($_REQUEST['from_installer'])) {
 			echo "OK";
@@ -285,7 +289,7 @@ class DatabaseAdmin extends Controller {
 			$subclasses = ClassInfo::subclassesFor($baseClass);
 			unset($subclasses[0]);
 			foreach($subclasses as $k => $subclass) {
-				if(DataObject::database_fields($subclass)) {
+				if(DataObject::has_own_table($subclass)) {
 					unset($subclasses[$k]);
 				}
 			}

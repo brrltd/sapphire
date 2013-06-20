@@ -9,31 +9,12 @@
 class DBQueryBuilder {
 	
 	/**
-	 * Determine if this builder should format the resulting SQL query for readability
-	 * 
-	 * @return boolean
-	 */
-	public function doFormat() {
-		// format could be one of 'true', 'false', 'dev' (for dev only), 'dev,test' for non-live, etc
-		$arg = Config::inst()->get('DBQueryBuilder', 'format');
-		
-		if($arg === null) return false;
-		if(is_bool($arg)) return $arg;
-		if($arg === 'true') return true;
-		if($arg === 'false') return false;
-		
-		// Assume this is environment dependent
-		$env = Director::get_environment_type();
-		return stripos($arg, $env) !== false;
-	}
-	
-	/**
 	 * Determines the line separator to use.
 	 * 
 	 * @return string Non-empty whitespace character
 	 */
 	public function getSeparator() {
-		return $this->doFormat() ? "\n " : ' ';
+		return "\n ";
 	}
 	
 	/**
@@ -170,10 +151,11 @@ class DBQueryBuilder {
 
 		foreach ($select as $alias => $field) {
 			// Don't include redundant aliases.
-			if ($alias === $field || preg_match('/"' . preg_quote($alias) . '"$/', $field)) {
+			$fieldAlias = "\"{$alias}\"";
+			if ($alias === $field || substr($field, -strlen($fieldAlias)) === $fieldAlias) {
 				$clauses[] = $field;
 			} else {
-				$clauses[] = "$field AS \"$alias\"";
+				$clauses[] = "$field AS $fieldAlias";
 			}
 		}
 
@@ -335,7 +317,9 @@ class DBQueryBuilder {
 		
 		// Assert that the array version provides the 'limit' key
 		if (!isset($limit['limit']) || !is_numeric($limit['limit'])) {
-			throw new InvalidArgumentException('DBQueryBuilder::buildLimitSQL(): Wrong format for $limit: '. var_export($limit, true));
+			throw new InvalidArgumentException(
+				'DBQueryBuilder::buildLimitSQL(): Wrong format for $limit: '. var_export($limit, true)
+			);
 		}
 		
 		// Format the array limit, given an optional start key

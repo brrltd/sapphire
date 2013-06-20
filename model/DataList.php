@@ -153,6 +153,13 @@ class DataList extends ViewableData implements SS_List, SS_Filterable, SS_Sortab
 		return $clone;
 	}
 
+	/**
+	 * Returns a new DataList instance with the specified query parameter assigned
+	 * 
+	 * @param string|array $keyOrArray Either the single key to set, or an array of key value pairs to set
+	 * @param mixed $val If $keyOrArray is not an array, this is the value to set
+	 * @return DataList
+	 */
 	public function setDataQueryParam($keyOrArray, $val = null) {
 		$clone = clone $this;
 
@@ -176,7 +183,10 @@ class DataList extends ViewableData implements SS_List, SS_Filterable, SS_Sortab
 	 */
 	public function sql(&$parameters = array()) {
 		if(func_num_args() == 0) {
-			Deprecation::notice('3.2', 'DataList::sql() now may produce parameters which are necessary to execute this query');
+			Deprecation::notice(
+				'3.2',
+				'DataList::sql() now may produce parameters which are necessary to execute this query'
+			);
 		}
 		return $this->dataQuery->query()->sql($parameters);
 	}
@@ -188,7 +198,8 @@ class DataList extends ViewableData implements SS_List, SS_Filterable, SS_Sortab
 	 * See SQLSelect::addWhere() for syntax examples, although DataList
 	 * won't expand multiple method arguments as SQLSelect does.
 	 *
-	 * @param string|array|SQLConditionGroup $filter Predicate(s) to set, as escaped SQL statements or paramaterised queries
+	 * @param string|array|SQLConditionGroup $filter Predicate(s) to set, as escaped SQL statements or
+	 * paramaterised queries
 	 * @return DataList
 	 */
 	public function where($filter) {
@@ -205,7 +216,8 @@ class DataList extends ViewableData implements SS_List, SS_Filterable, SS_Sortab
 	 * See SQLSelect::addWhere() for syntax examples, although DataList
 	 * won't expand multiple method arguments as SQLSelect does.
 	 *
-	 * @param string|array|SQLConditionGroup $filter Predicate(s) to set, as escaped SQL statements or paramaterised queries
+	 * @param string|array|SQLConditionGroup $filter Predicate(s) to set, as escaped SQL statements or
+	 * paramaterised queries
 	 * @return DataList
 	 */
 	public function whereAny($filter) {
@@ -820,14 +832,7 @@ class DataList extends ViewableData implements SS_List, SS_Filterable, SS_Sortab
 	 * @return DataObject|null
 	 */
 	public function find($key, $value) {
-		if($key == 'ID') {
-			$baseClass = ClassInfo::baseDataClass($this->dataClass);
-			$SQL_col = sprintf('"%s"."%s"', $baseClass, $key);
-		} else {
-			$SQL_col = sprintf('"%s"', $key);
-		}
-
-		return $this->where(array($SQL_col => $value))->First();
+		return $this->filter($key, $value)->first();
 	}
 	
 	/**
@@ -849,11 +854,7 @@ class DataList extends ViewableData implements SS_List, SS_Filterable, SS_Sortab
 	 * @return DataList
 	 */
 	public function byIDs(array $ids) {
-		$baseClass = ClassInfo::baseDataClass($this->dataClass);
-		$idClause = DB::placeholders($ids);
-		return $this->where(array(
-			"\"$baseClass\".\"ID\" IN ($idClause)" => $ids
-		));
+		return $this->filter('ID', $ids);
 	}
 
 	/**
@@ -863,10 +864,7 @@ class DataList extends ViewableData implements SS_List, SS_Filterable, SS_Sortab
 	 * @return DataObject
 	 */
 	public function byID($id) {
-		$baseClass = ClassInfo::baseDataClass($this->dataClass);
-		return $this->where(array(
-			"\"$baseClass\".\"ID\"" => $id
-		))->First();
+		return $this->filter('ID', $id)->first();
 	}
 	
 	/**

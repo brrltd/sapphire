@@ -203,7 +203,7 @@ class DataQuery {
 
 			// If queriedColumns is set, then check if any of the fields are in this table.
 			if ($queriedColumns) {
-				$tableFields = DataObject::database_fields($tableClass);
+				$tableFields = DataObject::database_fields($tableClass, false);
 				$selectColumns = array();
 				// Look through columns specifically requested in query (or where clause)
 				foreach ($queriedColumns as $queriedColumn) {
@@ -306,13 +306,8 @@ class DataQuery {
 				}
 				
 				if(count($parts) == 1) {
-					$databaseFields = DataObject::database_fields($baseClass);
-	
-					// database_fields() doesn't return ID, so we need to 
-					// manually add it here
-					$databaseFields['ID'] = true;
-				
-					if(isset($databaseFields[$parts[0]])) {
+					
+					if(DataObject::has_own_table_database_field($baseClass, $parts[0])) {
 						$qualCol = "\"$baseClass\".\"{$parts[0]}\"";
 					} else {
 						$qualCol = "\"$parts[0]\"";
@@ -359,7 +354,10 @@ class DataQuery {
 	 */
 	public function sql(&$parameters = array()) {
 		if(func_num_args() == 0) {
-			Deprecation::notice('3.2', 'DataQuery::sql() now may produce parameters which are necessary to execute this query');
+			Deprecation::notice(
+				'3.2',
+				'DataQuery::sql() now may produce parameters which are necessary to execute this query'
+			);
 		}
 		return $this->getFinalisedQuery()->sql($parameters);
 	}
@@ -441,7 +439,7 @@ class DataQuery {
 	 */
 	protected function selectColumnsFromTable(SQLSelect &$query, $tableClass, $columns = null) {
 		// Add SQL for multi-value fields
-		$databaseFields = DataObject::database_fields($tableClass);
+		$databaseFields = DataObject::database_fields($tableClass, false);
 		$compositeFields = DataObject::composite_fields($tableClass, false);
 		if($databaseFields) foreach($databaseFields as $k => $v) {
 			if((is_null($columns) || in_array($k, $columns)) && !isset($compositeFields[$k])) {
@@ -511,7 +509,8 @@ class DataQuery {
 	 * @see SQLSelect::addWhere() for syntax examples, although DataQuery
 	 * won't expand multiple arguments as SQLSelect does.
 	 *
-	 * @param string|array|SQLConditionGroup $filter Predicate(s) to set, as escaped SQL statements or paramaterised queries
+	 * @param string|array|SQLConditionGroup $filter Predicate(s) to set, as escaped SQL statements or
+	 * paramaterised queries
 	 * @return DataQuery
 	 */
 	public function where($filter) {
@@ -527,7 +526,8 @@ class DataQuery {
 	 * @see SQLSelect::addWhere() for syntax examples, although DataQuery
 	 * won't expand multiple method arguments as SQLSelect does.
 	 *
-	 * @param string|array|SQLConditionGroup $filter Predicate(s) to set, as escaped SQL statements or paramaterised queries
+	 * @param string|array|SQLConditionGroup $filter Predicate(s) to set, as escaped SQL statements or
+	 * paramaterised queries
 	 * @return DataQuery
 	 */
 	public function whereAny($filter) {

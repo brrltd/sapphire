@@ -608,7 +608,9 @@ class UploadFieldTest extends FunctionalTest {
 			),
 			'Removes dropzone');
 		$this->assertTrue(
-			(bool)$parser->getBySelector('#UploadFieldTestForm_Form_CanUploadFalseField_Holder .ss-uploadfield-fromfiles'),
+			(bool)$parser->getBySelector(
+				'#UploadFieldTestForm_Form_CanUploadFalseField_Holder .ss-uploadfield-fromfiles'
+			),
 			'Keeps "From files" button'
 		);
 	}	

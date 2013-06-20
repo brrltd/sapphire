@@ -106,15 +106,11 @@ class CMSBatchActionHandler extends RequestHandler {
 			if($record_class::has_extension('Versioned')) {
 				// If we didn't query all the pages, then find the rest on the live site
 				if(!$pages || $pages->Count() < sizeof($ids)) {
+					$idsFromLive = array();
 					foreach($ids as $id) $idsFromLive[$id] = true;
 					if($pages) foreach($pages as $page) unset($idsFromLive[$page->ID]);
 					$idsFromLive = array_keys($idsFromLive);
-
-					$idsPlaceholder = DB::placeholders($idsFromLive);
-					$where = array(
-						"\"{$this->recordClass}\".\"ID\" IN ($idsPlaceholder)" => $idsFromLive
-					);
-					$livePages = Versioned::get_by_stage($this->recordClass, 'Live', $where);
+					$livePages = Versioned::get_by_stage($this->recordClass, 'Live')->byIDs($idsFromLive);
 					if($pages) {
 						// Can't merge into a DataList, need to condense into an actual list first
 						// (which will retrieve all records as objects, so its an expensive operation)

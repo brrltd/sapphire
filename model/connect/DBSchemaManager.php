@@ -133,11 +133,14 @@ abstract class DBSchemaManager {
 			foreach ($this->schemaUpdateTransaction as $tableName => $changes) {
 				switch ($changes['command']) {
 					case 'create':
-						$this->createTable($tableName, $changes['newFields'], $changes['newIndexes'], $changes['options'], @$changes['advancedOptions']);
+						$this->createTable($tableName, $changes['newFields'], $changes['newIndexes'],
+										$changes['options'], @$changes['advancedOptions']);
 						break;
 
 					case 'alter':
-						$this->alterTable($tableName, $changes['newFields'], $changes['newIndexes'], $changes['alteredFields'], $changes['alteredIndexes'], $changes['alteredOptions'], @$changes['advancedOptions']);
+						$this->alterTable($tableName, $changes['newFields'], $changes['newIndexes'],
+										$changes['alteredFields'], $changes['alteredIndexes'],
+										$changes['alteredOptions'], @$changes['advancedOptions']);
 						break;
 				}
 			}
@@ -294,7 +297,9 @@ abstract class DBSchemaManager {
 	 * @param string $options SQL statement to append to the CREATE TABLE call.
 	 * @param array $extensions List of extensions
 	 */
-	public function requireTable($table, $fieldSchema = null, $indexSchema = null, $hasAutoIncPK = true, $options = array(), $extensions = false) {
+	public function requireTable($table, $fieldSchema = null, $indexSchema = null, $hasAutoIncPK = true,
+		$options = array(), $extensions = false
+	) {
 
 		if (!isset($this->tableList[strtolower($table)])) {
 			$this->transCreateTable($table, $options, $extensions);
@@ -415,7 +420,10 @@ abstract class DBSchemaManager {
 		} else if ($oldSpecString != $specString) {
 			// Updated index
 			$this->transAlterIndex($table, $index, $spec);
-			$this->alterationMessage("Index $table.$index: changed to $specString <i style=\"color: #AAA\">(from $oldSpecString)</i>", "changed");
+			$this->alterationMessage(
+				"Index $table.$index: changed to $specString <i style=\"color: #AAA\">(from $oldSpecString)</i>",
+				"changed"
+			);
 		}
 	}
 	
@@ -654,7 +662,8 @@ abstract class DBSchemaManager {
 			}
 			$this->transAlterField($table, $field, $spec_orig);
 			$this->alterationMessage(
-					"Field $table.$field: changed to $specValue <i style=\"color: #AAA\">(from {$fieldValue})</i>", "changed"
+				"Field $table.$field: changed to $specValue <i style=\"color: #AAA\">(from {$fieldValue})</i>",
+				"changed"
 			);
 		}
 	}
@@ -675,7 +684,10 @@ abstract class DBSchemaManager {
 						: 2;
 			}
 			$this->renameField($table, $fieldName, "_obsolete_{$fieldName}$suffix");
-			$this->alterationMessage("Field $table.$fieldName: renamed to $table._obsolete_{$fieldName}$suffix", "obsolete");
+			$this->alterationMessage(
+				"Field $table.$fieldName: renamed to $table._obsolete_{$fieldName}$suffix",
+				"obsolete"
+			);
 		}
 	}
 
@@ -698,6 +710,9 @@ abstract class DBSchemaManager {
 					case "deleted":
 						$sign = '-';
 						break;
+					case "notice":
+						$sign = '*';
+						break;
 					case "error":
 						$sign = "!";
 						break;
@@ -713,6 +728,9 @@ abstract class DBSchemaManager {
 						break;
 					case "obsolete":
 						$color = "red";
+						break;
+					case "notice":
+						$color = "orange";
 						break;
 					case "error":
 						$color = "red";
@@ -854,9 +872,11 @@ abstract class DBSchemaManager {
 	 *   - 'MSSQLDatabase'/'MySQLDatabase'/'PostgreSQLDatabase' - database-specific options such as "engine" for MySQL.
 	 *   - 'temporary' - If true, then a temporary table will be created
 	 * @param $advancedOptions Advanced creation options
-	 * @return string The table name generated.  This may be different from the table name, for example with temporary tables.
+	 * @return string The table name generated.  This may be different from the table name, for example with temporary
+	 * tables.
 	 */
-	abstract public function createTable($table, $fields = null, $indexes = null, $options = null, $advancedOptions = null);
+	abstract public function createTable($table, $fields = null, $indexes = null, $options = null,
+										$advancedOptions = null);
 
 	/**
 	 * Alter a table's schema.
@@ -869,7 +889,8 @@ abstract class DBSchemaManager {
 	 * @param array $alteredOptions
 	 * @param array $advancedOptions
 	 */
-	abstract public function alterTable($table, $newFields = null, $newIndexes = null, $alteredFields = null, $alteredIndexes = null, $alteredOptions = null, $advancedOptions = null);
+	abstract public function alterTable($table, $newFields = null, $newIndexes = null, $alteredFields = null,
+										$alteredIndexes = null, $alteredOptions = null, $advancedOptions = null);
 
 	/**
 	 * Rename a table.

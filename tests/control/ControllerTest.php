@@ -233,12 +233,14 @@ class ControllerTest extends FunctionalTest {
 		
 		/* It can also be used to attach additional get variables to a link */
 		$this->assertEquals("admin/crm?flush=1", Controller::join_links("admin/crm", "?flush=1"));
-		$this->assertEquals("admin/crm?existing=1&flush=1", Controller::join_links("admin/crm?existing=1", "?flush=1"));
+		$this->assertEquals("admin/crm?existing=1&flush=1",
+							Controller::join_links("admin/crm?existing=1", "?flush=1"));
 		$this->assertEquals("admin/crm/MyForm?a=1&b=2&c=3",
 			Controller::join_links("?a=1", "admin/crm", "?b=2", "MyForm?c=3"));
 
 		// And duplicates are handled nicely
-		$this->assertEquals("admin/crm?foo=2&bar=3&baz=1", Controller::join_links("admin/crm?foo=1&bar=1&baz=1", "?foo=2&bar=3"));
+		$this->assertEquals("admin/crm?foo=2&bar=3&baz=1",
+							Controller::join_links("admin/crm?foo=1&bar=1&baz=1", "?foo=2&bar=3"));
 		
 		$this->assertEquals (
 			'admin/action', Controller::join_links('admin/', '/', '/action'), 'Test that multiple slashes are trimmed.'

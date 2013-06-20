@@ -30,8 +30,8 @@ class DataObjectLazyLoadingTest extends SapphireTest {
 		$db = DB::get_conn();
 		$playerList = new DataList('DataObjectTest_SubTeam');
 		$playerList = $playerList->setQueriedColumns(array('ID'));
-		$expected = 'SELECT DISTINCT "DataObjectTest_Team"."ClassName", "DataObjectTest_Team"."Created", ' .
-			'"DataObjectTest_Team"."LastEdited", "DataObjectTest_Team"."ID", CASE WHEN '.
+		$expected = 'SELECT DISTINCT "DataObjectTest_Team"."ClassName", "DataObjectTest_Team"."LastEdited", ' .
+			'"DataObjectTest_Team"."Created", "DataObjectTest_Team"."ID", CASE WHEN '.
 			'"DataObjectTest_Team"."ClassName" IS NOT NULL THEN "DataObjectTest_Team"."ClassName" ELSE ' .
 			$db->quoteString('DataObjectTest_Team').' END AS "RecordClassName", "DataObjectTest_Team"."Title" '.
 			'FROM "DataObjectTest_Team" ' .
@@ -44,8 +44,8 @@ class DataObjectLazyLoadingTest extends SapphireTest {
 		$db = DB::get_conn();
 		$playerList = new DataList('DataObjectTest_SubTeam');
 		$playerList = $playerList->setQueriedColumns(array('Title', 'SubclassDatabaseField'));
-		$expected = 'SELECT DISTINCT "DataObjectTest_Team"."ClassName", "DataObjectTest_Team"."Created", ' .
-			'"DataObjectTest_Team"."LastEdited", "DataObjectTest_Team"."Title", ' .
+		$expected = 'SELECT DISTINCT "DataObjectTest_Team"."ClassName", "DataObjectTest_Team"."LastEdited", ' .
+			'"DataObjectTest_Team"."Created", "DataObjectTest_Team"."Title", ' .
 			'"DataObjectTest_SubTeam"."SubclassDatabaseField", "DataObjectTest_Team"."ID", CASE WHEN ' .
 			'"DataObjectTest_Team"."ClassName" IS NOT NULL THEN "DataObjectTest_Team"."ClassName" ELSE ' .
 			$db->quoteString('DataObjectTest_Team').' END AS "RecordClassName" FROM "DataObjectTest_Team" ' .
@@ -59,8 +59,8 @@ class DataObjectLazyLoadingTest extends SapphireTest {
 		$db = DB::get_conn();
 		$playerList = new DataList('DataObjectTest_SubTeam');
 		$playerList = $playerList->setQueriedColumns(array('Title'));
-		$expected = 'SELECT DISTINCT "DataObjectTest_Team"."ClassName", "DataObjectTest_Team"."Created", ' .
-			'"DataObjectTest_Team"."LastEdited", "DataObjectTest_Team"."Title", "DataObjectTest_Team"."ID", ' .
+		$expected = 'SELECT DISTINCT "DataObjectTest_Team"."ClassName", "DataObjectTest_Team"."LastEdited", ' .
+			'"DataObjectTest_Team"."Created", "DataObjectTest_Team"."Title", "DataObjectTest_Team"."ID", ' .
 			'CASE WHEN "DataObjectTest_Team"."ClassName" IS NOT NULL THEN "DataObjectTest_Team"."ClassName" ELSE ' .
 			$db->quoteString('DataObjectTest_Team').' END AS "RecordClassName" FROM "DataObjectTest_Team" WHERE ' .
 			'("DataObjectTest_Team"."ClassName" IN (?)) ' .
@@ -72,8 +72,8 @@ class DataObjectLazyLoadingTest extends SapphireTest {
 		$db = DB::get_conn();
 		$playerList = new DataList('DataObjectTest_SubTeam');
 		$playerList = $playerList->setQueriedColumns(array('SubclassDatabaseField'));
-		$expected = 'SELECT DISTINCT "DataObjectTest_Team"."ClassName", "DataObjectTest_Team"."Created", ' .
-			'"DataObjectTest_Team"."LastEdited", "DataObjectTest_SubTeam"."SubclassDatabaseField", ' .
+		$expected = 'SELECT DISTINCT "DataObjectTest_Team"."ClassName", "DataObjectTest_Team"."LastEdited", ' .
+			'"DataObjectTest_Team"."Created", "DataObjectTest_SubTeam"."SubclassDatabaseField", ' .
 			'"DataObjectTest_Team"."ID", CASE WHEN "DataObjectTest_Team"."ClassName" IS NOT NULL THEN ' .
 			'"DataObjectTest_Team"."ClassName" ELSE '.$db->quoteString('DataObjectTest_Team').' END ' .
 			'AS "RecordClassName", "DataObjectTest_Team"."Title" ' .
@@ -89,7 +89,9 @@ class DataObjectLazyLoadingTest extends SapphireTest {
 		// Shouldn't be a left join in here.
 		$this->assertEquals(0, 
 			preg_match(
-				$this->normaliseSQL('/SELECT DISTINCT "DataObjectTest_Team"."ID" .* LEFT JOIN .* FROM "DataObjectTest_Team"/'),
+				$this->normaliseSQL(
+					'/SELECT DISTINCT "DataObjectTest_Team"."ID" .* LEFT JOIN .* FROM "DataObjectTest_Team"/'
+				),
 				$this->normaliseSQL($playerList->sql($parameters))
 			)
 		);

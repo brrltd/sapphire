@@ -57,11 +57,10 @@ class Group extends DataObject {
 	public function getAllChildren() {
 		$doSet = new ArrayList();
 
-		if ($children = DataObject::get('Group')->where(array('"ParentID"' => $this->ID))) {
-			foreach($children as $child) {
-				$doSet->push($child);
-				$doSet->merge($child->getAllChildren());
-			}
+		$children = DataObject::get('Group')->filter("ParentID", $this->ID);
+		foreach($children as $child) {
+			$doSet->push($child);
+			$doSet->merge($child->getAllChildren());
 		}
 		
 		return $doSet;
@@ -185,7 +184,7 @@ class Group extends DataObject {
 			// Add roles (and disable all checkboxes for inherited roles)
 			$allRoles = PermissionRole::get();
 			if(Permission::check('ADMIN')) {
-				$allRoles = $allRoles->where(array('"OnlyAdminCanApply"' => 0));
+				$allRoles = $allRoles->filter("OnlyAdminCanApply", 0);
 			}
 			if($this->ID) {
 				$groupRoles = $this->Roles();
@@ -302,10 +301,7 @@ class Group extends DataObject {
 			
 			// Get the children of *all* the groups identified in the previous chunk.
 			// This minimises the number of SQL queries necessary
-			$idClause = DB::placeholders($chunkToAdd);
-			$chunkToAdd = Group::get()->where(array(
-				"\"Group\".\"ParentID\" IN ($idClause)" => $chunkToAdd
-			))->column('ID');
+			$chunkToAdd = Group::get()->filter("ParentID", $chunkToAdd)->column('ID');
 		}
 		
 		return $familyIDs;
@@ -334,10 +330,10 @@ class Group extends DataObject {
 	 * Override this so groups are ordered in the CMS
 	 */
 	public function stageChildren() {
-		return Group::get()->where(array(
-				"\"Group\".\"ParentID\" = ?" => $this->ID,
-				"\"Group\".\"ID\" != ?" => $this->ID
-			))->sort('"Sort"');
+		return Group::get()
+			->filter("ParentID", $this->ID)
+			->exclude("ID", $this->ID)
+			->sort('"Sort"');
 	}
 	
 	public function getTreeTitle() {

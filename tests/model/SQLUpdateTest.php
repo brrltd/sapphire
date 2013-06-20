@@ -43,14 +43,14 @@ class SQLUpdateTest extends SapphireTest {
 }
 
 class SQLUpdateTestBase extends DataObject implements TestOnly {
-	static $db = array(
+	private static $db = array(
 		'Title' => 'Varchar(255)',
 		'Description' => 'Text'
 	);
 }
 
 class SQLUpdateChild extends SQLUpdateTestBase {
-	static $db = array(
+	private static $db = array(
 		'Details' => 'Varchar(255)'
 	);
 }

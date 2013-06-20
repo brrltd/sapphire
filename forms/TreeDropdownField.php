@@ -432,19 +432,19 @@ class TreeDropdownField extends FormField {
 			$res = call_user_func($this->searchCallback, $this->sourceObject, $this->labelField, $this->search);
 		} else {
 			$sourceObject = $this->sourceObject;
-			$wheres = array();
+			$filters = array();
 			if(singleton($sourceObject)->hasDatabaseField($this->labelField)) {
-				$wheres[] = array("\"$this->labelField\" LIKE ?" => "%{$this->search}%");
+				$filters["{$this->labelField}:PartialMatch"]  = $this->search;
 			} else {
 				if(singleton($sourceObject)->hasDatabaseField('Title')) {
-					$wheres[] = array('"Title" LIKE ?' => "%{$this->search}%");
+					$filters["Title:PartialMatch"] = $this->search;
 				}
 				if(singleton($sourceObject)->hasDatabaseField('Name')) {
-					$wheres[] = array('"Name" LIKE ?' => "%{$this->search}%");
+					$filters["Name:PartialMatch"] = $this->search;
 				}
 			} 
 		
-			if(!$wheres) {
+			if(empty($filters)) {
 				throw new InvalidArgumentException(sprintf(
 					'Cannot query by %s.%s, not a valid database column',
 					$sourceObject,
@@ -452,7 +452,7 @@ class TreeDropdownField extends FormField {
 				));
 			}
 
-			$res = DataObject::get($this->sourceObject)->whereAny($wheres);
+			$res = DataObject::get($this->sourceObject)->filterAny($filters);
 		}
 		
 		if( $res ) {
@@ -485,13 +485,9 @@ class TreeDropdownField extends FormField {
 	 * @return DataObject
 	 */
 	protected function objectForKey($key) {
-		if($this->keyField == 'ID') {
-			return DataObject::get_by_id($this->sourceObject, $key);
-		} else {
-			return DataObject::get_one($this->sourceObject, array(
-				"\"{$this->keyField}\"" => $key
-			));
-		}
+		return DataObject::get($this->sourceObject)
+			->filter($this->keyField, $key)
+			->first();
 	}
 
 	/**

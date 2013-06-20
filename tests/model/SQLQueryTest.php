@@ -38,7 +38,10 @@ class SQLQueryTest extends SapphireTest {
 		$query->setFrom("MyTable");
 		$query->setWhere("Name = 'Name'");
 		$query->addWhere("Meta = 'Test'");
-		$this->assertSQLEquals("SELECT Name, Meta FROM MyTable WHERE (Name = 'Name') AND (Meta = 'Test')", $query->sql($parameters));
+		$this->assertSQLEquals(
+			"SELECT Name, Meta FROM MyTable WHERE (Name = 'Name') AND (Meta = 'Test')",
+			$query->sql($parameters)
+		);
 	}
 	
 	public function testSelectWithConstructorParameters() {
@@ -51,7 +54,10 @@ class SQLQueryTest extends SapphireTest {
 	public function testSelectWithChainedMethods() {
 		$query = new SQLSelect();
 		$query->setSelect("Name","Meta")->setFrom("MyTable")->setWhere("Name = 'Name'")->addWhere("Meta = 'Test'");
-		$this->assertSQLEquals("SELECT Name, Meta FROM MyTable WHERE (Name = 'Name') AND (Meta = 'Test')", $query->sql($parameters));
+		$this->assertSQLEquals(
+			"SELECT Name, Meta FROM MyTable WHERE (Name = 'Name') AND (Meta = 'Test')",
+			$query->sql($parameters)
+		);
 	}
 	
 	public function testCanSortBy() {
@@ -67,7 +73,8 @@ class SQLQueryTest extends SapphireTest {
 		$query->setWhere("Name = 'Name'")->addWhere("Meta = 'Test'")->addWhere("Beta != 'Gamma'");
 		$this->assertSQLEquals(
 			"SELECT Name, Meta FROM MyTable WHERE (Name = 'Name') AND (Meta = 'Test') AND (Beta != 'Gamma')",
-			$query->sql($parameters));
+			$query->sql($parameters)
+		);
 	}
 	
 	public function testSelectWithLimitClause() {
@@ -145,7 +152,7 @@ class SQLQueryTest extends SapphireTest {
 		$query->addFrom('INNER JOIN SecondTable USING (ID)');
 		$query->addFrom('INNER JOIN ThirdTable USING (ID)');
 		$query->setOrderBy('MyName');
-		$this->assertEquals(
+		$this->assertSQLEquals(
 			'SELECT * FROM MyTable '
 			. 'INNER JOIN SecondTable USING (ID) '
 			. 'INNER JOIN ThirdTable USING (ID) '
@@ -154,40 +161,40 @@ class SQLQueryTest extends SapphireTest {
 	}
 
 	public function testNullLimit() {
-		$query = new SQLQuery();
+		$query = new SQLSelect();
 		$query->setFrom("MyTable");
 		$query->setLimit(null);
 
-		$this->assertEquals(
+		$this->assertSQLEquals(
 			'SELECT * FROM MyTable',
-			$query->sql()
+			$query->sql($parameters)
 		);
 	}
 
 	public function testZeroLimit() {
-		$query = new SQLQuery();
+		$query = new SQLSelect();
 		$query->setFrom("MyTable");
 		$query->setLimit(0);
 
-		$this->assertEquals(
+		$this->assertSQLEquals(
 			'SELECT * FROM MyTable',
-			$query->sql()
+			$query->sql($parameters)
 		);
 	}
 
 	public function testZeroLimitWithOffset() {
-		if(!(DB::getConn() instanceof MySQLDatabase || DB::getConn() instanceof SQLite3Database 
-				|| DB::getConn() instanceof PostgreSQLDatabase)) {
+		if(!(DB::get_conn() instanceof MySQLDatabase || DB::get_conn() instanceof SQLite3Database 
+				|| DB::get_conn() instanceof PostgreSQLDatabase)) {
 			$this->markTestIncomplete();
 		}
 
-		$query = new SQLQuery();
+		$query = new SQLSelect();
 		$query->setFrom("MyTable");
 		$query->setLimit(0, 99);
 
-		$this->assertEquals(
+		$this->assertSQLEquals(
 			'SELECT * FROM MyTable LIMIT 0 OFFSET 99',
-			$query->sql()
+			$query->sql($parameters)
 		);
 	}
 
@@ -519,7 +526,7 @@ class SQLQueryTest extends SapphireTest {
 	 * Test that multiple order elements are maintained in the given order
 	 */
 	public function testOrderByMultiple() {
-		if(DB::getConn() instanceof MySQLDatabase) {
+		if(DB::get_conn() instanceof MySQLDatabase) {
 			$query = new SQLSelect();
 			$query->setSelect(array('"Name"', '"Meta"'));
 			$query->setFrom('"SQLQueryTest_DO"');

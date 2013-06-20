@@ -36,8 +36,50 @@ class MySQLiConnector extends DBConnector {
 	public function setLastStatement($statement) {
 		$this->lastStatement = $statement;
 	}
+	
+	/**
+	 * List of prepared statements, cached by SQL string
+	 *
+	 * @var array
+	 */
+	protected $cachedStatements = array();
+	
+	/**
+	 * Flush all prepared statements
+	 */
+	public function flushStatements() {
+		$this->cachedStatements = array();
+	}
+	
+	/**
+	 * Retrieve a prepared statement for a given SQL string, or return an already prepared version if
+	 * one exists for the given query
+	 * 
+	 * @param string $sql
+	 * @param boolean &$success
+	 * @return mysqli_stmt
+	 */
+	public function getOrPrepareStatement($sql, &$success) {
+		
+		// Check for cached statement
+		if(!empty($this->cachedStatements[$sql])) {
+			$success = true;
+			return $this->cachedStatements[$sql];
+		}
+		
+		// Prepare statement with arguments
+		$statement = $this->dbConn->stmt_init();
+		if($success = $statement->prepare($sql)) {
+			// Only cache prepared statement on success
+			$this->cachedStatements[$sql] = $statement;
+		}
+		
+		return $statement;
+	}
 
 	public function connect($parameters, $selectDB = false) {
+		
+		$this->flushStatements();
 		
 		// Normally $selectDB is set to false by the MySQLDatabase controller, as per convention
 		$selectedDB = ($selectDB && !empty($parameters['database'])) ? $parameters['database'] : null;
@@ -162,7 +204,8 @@ class MySQLiConnector extends DBConnector {
 				case 'array':
 				case 'unknown type':
 				default:
-					user_error("Cannot bind parameter \"$value\" as it is an unsupported type ($phpType)", E_USER_ERROR);
+					user_error("Cannot bind parameter \"$value\" as it is an unsupported type ($phpType)",
+						E_USER_ERROR);
 					break;
 			}
 			$values[] = $value;
@@ -200,15 +243,11 @@ class MySQLiConnector extends DBConnector {
 		$parsedParameters = $this->parsePreparedParameters($parameters, $blobs);
 		
 		// Benchmark query
-		$conn = $this->dbConn;
 		$self = $this;
-		$lastStatement = $this->benchmarkQuery($sql, function($sql) use($conn, $parsedParameters, $blobs, $self) {
+		$lastStatement = $this->benchmarkQuery($sql, function($sql) use($parsedParameters, $blobs, $self) {
 			
-			// Prepare statement with arguments
-			$statement = $conn->stmt_init();
-			if(!$statement->prepare($sql)) {
-				return $statement;
-			}
+			$statement = $self->getOrPrepareStatement($sql, $success);
+			if(!$success) return $statement;
 			
 			$self->bindParameters($statement, $parsedParameters);
 			

@@ -67,7 +67,8 @@ class SQLAssignmentRow {
 			}
 		}
 		
-		user_error("Nested field assignments should be given as a single parameterised item array in array('?' => array('value')) format)", E_USER_ERROR);
+		user_error("Nested field assignments should be given as a single parameterised item array in "
+				.  "array('?' => array('value')) format)", E_USER_ERROR);
 	}
 	
 	/**

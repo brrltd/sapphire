@@ -145,7 +145,7 @@ class Convert {
 	 * Safely encodes a value (or list of values) using the current database's
 	 * safe string encoding method
 	 * 
-	 * @param string|array $val Input value
+	 * @param mixed|array $val Input value, or list of values as an array
 	 * @param boolean $quoted Flag indicating whether the value should be safely
 	 * quoted, instead of only being escaped. By default this function will 
 	 * only escape the string (false).
