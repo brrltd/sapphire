@@ -220,6 +220,7 @@ class SQLSelect extends SQLConditionalExpression {
 	 * Internally, limit will always be stored as a map containing the keys 'start' and 'limit'
 	 *
 	 * @param int|string|array $limit If passed as a string or array, assumes SQL escaped data.
+	 *								  Only applies for positive values, or if an $offset is set as well.
 	 * @param int $offset
 	 *
 	 * @throws InvalidArgumentException
@@ -272,7 +273,7 @@ class SQLSelect extends SQLConditionalExpression {
 	 * @example $sql->orderby("Column", "DESC");
 	 * @example $sql->orderby(array("Column" => "ASC", "ColumnTwo" => "DESC"));
 	 *
-	 * @param string|array $orderby Clauses to add (escaped SQL statement)
+	 * @param string|array $clauses Clauses to add (escaped SQL statement)
 	 * @param string $dir Sort direction, ASC or DESC
 	 *
 	 * @return SQLSelect
@@ -291,15 +292,13 @@ class SQLSelect extends SQLConditionalExpression {
 	 * @example $sql->orderby("Column", "DESC");
 	 * @example $sql->orderby(array("Column" => "ASC", "ColumnTwo" => "DESC"));
 	 *
-	 * @param string|array $orderby Clauses to add (escaped SQL statements)
+	 * @param string|array $clauses Clauses to add (escaped SQL statements)
 	 * @param string $dir Sort direction, ASC or DESC
 	 *
 	 * @return SQLSelect
 	 */
 	public function addOrderBy($clauses = null, $direction = null) {
-		if(!$clauses) {
-			return $this;
-		}
+		if(empty($clauses)) return $this;
 		
 		if(is_string($clauses)) {
 			if(strpos($clauses, "(") !== false) {
@@ -338,21 +337,22 @@ class SQLSelect extends SQLConditionalExpression {
 		// directly in the ORDER BY
 		if($this->orderby) {
 			$i = 0;
+			$orderby = array();
 			foreach($this->orderby as $clause => $dir) {
 
 				// public function calls and multi-word columns like "CASE WHEN ..."
 				if(strpos($clause, '(') !== false || strpos($clause, " ") !== false ) {
-					// remove the old orderby
-					unset($this->orderby[$clause]);
 					
+					// Move the clause to the select fragment, substituting a placeholder column in the sort fragment.
 					$clause = trim($clause);
 					$column = "_SortColumn{$i}";
-
 					$this->selectField($clause, $column);
-					$this->addOrderBy('"' . $column . '"', $dir);
+					$clause = '"' . $column . '"';
 					$i++;
 				}
+				$orderby[$clause] = $dir;
 			}
+			$this->orderby = $orderby;
 		}
 
 		return $this;
@@ -642,8 +642,19 @@ class SQLSelect extends SQLConditionalExpression {
 	public function aggregate($column, $alias = null) {
 		
 		$clone = clone $this;
-		$clone->setLimit($this->limit);
-		$clone->setOrderBy($this->orderby);
+		
+		// don't set an ORDER BY clause if no limit has been set. It doesn't make
+		// sense to add an ORDER BY if there is no limit, and it will break
+		// queries to databases like MSSQL if you do so. Note that the reason
+		// this came up is because DataQuery::initialiseQuery() introduces
+		// a default sort.
+		if($this->limit) {
+			$clone->setLimit($this->limit);
+			$clone->setOrderBy($this->orderby);
+		} else {
+			$clone->setOrderBy(array());
+		}
+		
 		$clone->setGroupBy($this->groupby);
 		if($alias) {
 			$clone->setSelect(array());
@@ -652,7 +663,6 @@ class SQLSelect extends SQLConditionalExpression {
 			$clone->setSelect($column);
 		}
 		
-
 		return $clone;
 	}
 	

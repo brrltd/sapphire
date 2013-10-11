@@ -181,7 +181,7 @@ class MySQLSchemaManager extends DBSchemaManager {
 	}
 
 	public function createDatabase($name) {
-		$this->query("CREATE DATABASE \"$name\"");
+		$this->query("CREATE DATABASE \"$name\" DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci");
 	}
 
 	public function dropDatabase($name) {
