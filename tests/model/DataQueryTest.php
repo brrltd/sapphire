@@ -125,7 +125,7 @@ class DataQueryTest extends SapphireTest {
 		$dq = $dq->sort('"Name" ASC, MID("Name", 8, 1) DESC');
 		$this->assertContains(
 			'ORDER BY "Name" ASC, "_SortColumn0" DESC',
-			$dq->sql()
+			$dq->sql($parameters)
 		);
 	}
 }

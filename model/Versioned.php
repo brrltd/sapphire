@@ -193,7 +193,7 @@ class Versioned extends DataExtension {
 		case 'archive':
 			$date = $dataQuery->getQueryParam('Versioned.date');
 			foreach($query->getFrom() as $table => $dummy) {
-				if(!DB::getConn()->hasTable($table . '_versions')) {
+				if(!DB::get_schema()->hasTable($table . '_versions')) {
 					continue;
 				}
 
