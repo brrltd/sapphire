@@ -395,7 +395,7 @@ class DB {
 	/**
 	 * @deprecated since version 3.2 Use DB::create_database instead
 	 */
-	public static function createDatabase($database) {
+	public static function createDatabase($connect, $username, $password, $database) {
 		Deprecation::notice('3.2', 'Use DB::create_database instead');
 		return self::create_database($database);
 	}

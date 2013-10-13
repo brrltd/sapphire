@@ -162,13 +162,19 @@ class MySQLDatabaseConfigurationHelper implements DatabaseConfigurationHelper {
 	
 	/**
 	 * Determines if a given database name is a valid Silverstripe name.
+	 * This is any database name that is valid in MySQL when unquoted.
 	 * 
 	 * @param string $database Candidate database name
 	 * @return boolean
 	 */
 	public function checkValidDatabaseName($database) {
+		
+		// Reject all-digit names
+		if(preg_match('/^\d+$/', $database)) return false;
+		
+		// Restricted to any 
 		// @see http://dev.mysql.com/doc/refman/5.0/en/identifiers.html
-		return preg_match('/^[\w$]+$/i', $database);
+		return preg_match('/^[0-9,a-z,A-Z$\x{0080}-\x{FFFF}_]+$/u', $database);
 	}
 	
 	/**
