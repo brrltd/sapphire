@@ -27,8 +27,41 @@ class PDOConnector extends DBConnector {
 	 * @var PDOStatement
 	 */
 	protected $lastStatement = null;
+	
+	/**
+	 * List of prepared statements, cached by SQL string
+	 *
+	 * @var array
+	 */
+	protected $cachedStatements = array();
+	
+	/**
+	 * Flush all prepared statements
+	 */
+	public function flushStatements() {
+		$this->cachedStatements = array();
+	}
+	
+	/**
+	 * Retrieve a prepared statement for a given SQL string, or return an already prepared version if
+	 * one exists for the given query
+	 * 
+	 * @param string $sql
+	 * @return PDOStatement
+	 */
+	public function getOrPrepareStatement($sql) {
+		if(empty($this->cachedStatements[$sql])) {
+			$this->cachedStatements[$sql] = $this->pdoConnection->prepare(
+				$sql,
+				array(PDO::ATTR_CURSOR => PDO::CURSOR_FWDONLY)
+			);
+		}
+		return $this->cachedStatements[$sql];
+	}
 
 	public function connect($parameters, $selectDB = false) {
+		
+		$this->flushStatements();
 
 		// Build DSN string
 		// Note that we don't select the database here until explicitly
@@ -195,12 +228,11 @@ class PDOConnector extends DBConnector {
 		if ($this->previewWrite($sql)) return;
 
 		// Benchmark query
-		$pdo = $this->pdoConnection;
 		$self = $this;
-		$this->lastStatement = $this->benchmarkQuery($sql, function($sql) use($pdo, $parameters, $self) {
+		$this->lastStatement = $this->benchmarkQuery($sql, function($sql) use($parameters, $self) {
 			
 			// Prepare statement
-			$statement = $pdo->prepare($sql, array(PDO::ATTR_CURSOR => PDO::CURSOR_FWDONLY));
+			$statement = $self->getOrPrepareStatement($sql);
 			if(!$statement) return null;
 			
 			// Inject parameters

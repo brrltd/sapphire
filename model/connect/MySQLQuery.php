@@ -43,7 +43,8 @@ class MySQLQuery extends SS_Query {
 
 	public function __destruct() {
 		if (is_object($this->handle)) $this->handle->free();
-		if (is_object($this->statement)) $this->statement->close();
+		// Don't close statement as these may be re-used across the life of this request
+		// if (is_object($this->statement)) $this->statement->close();
 	}
 
 	public function seek($row) {
