@@ -66,6 +66,15 @@ class PDOConnector extends DBConnector {
 		}
 		return $this->cachedStatements[$sql];
 	}
+	
+	/**
+	 * Is PDO running in emulated mode
+	 * 
+	 * @return boolean
+	 */
+	public static function is_emulate_prepare() {
+		return Config::inst()->get('PDOConnector', 'emulate_prepare');
+	}
 
 	public function connect($parameters, $selectDB = false) {
 		
@@ -121,7 +130,7 @@ class PDOConnector extends DBConnector {
 		// Connection commands to be run on every re-connection
 		$options = array(
 			PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8',
-			PDO::ATTR_EMULATE_PREPARES => Config::inst()->get('PDOConnector', 'emulate_prepare')
+			PDO::ATTR_EMULATE_PREPARES => self::is_emulate_prepare()
 		);
 
 		// May throw a PDOException if fails
@@ -154,6 +163,37 @@ class PDOConnector extends DBConnector {
 
 	public function quoteString($value) {
 		return $this->pdoConnection->quote($value);
+	}
+	
+	/**
+	 * Executes a query that doesn't return a resultset
+	 * 
+	 * @param string $sql
+	 * @param string $sql The SQL query to execute
+	 * @param integer $errorLevel For errors to this query, raise PHP errors
+	 * using this error level.
+	 */
+	public function exec($sql, $errorLevel = E_USER_ERROR) {
+
+		// Check if we should only preview this query
+		if ($this->previewWrite($sql)) return;
+		
+		// Reset last statement to prevent interference in case of error
+		$this->lastStatement = null;
+
+		// Benchmark query
+		$pdo = $this->pdoConnection;
+		$result = $this->benchmarkQuery($sql, function($sql) use($pdo) {
+			return $pdo->exec($sql);
+		});
+
+		// Check for errors
+		if ($result === false) {
+			$this->databaseError($this->getLastError(), $errorLevel, $sql);
+			return null;
+		}
+
+		return $result;
 	}
 
 	public function query($sql, $errorLevel = E_USER_ERROR) {
@@ -302,7 +342,7 @@ class PDOConnector extends DBConnector {
 	}
 
 	public function selectDatabase($name) {
-		$this->query("USE \"{$name}\"");
+		$this->exec("USE \"{$name}\"");
 		$this->databaseName = $name;
 		return true;
 	}

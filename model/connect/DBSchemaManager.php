@@ -698,6 +698,9 @@ abstract class DBSchemaManager {
 					case "deleted":
 						$sign = '-';
 						break;
+					case "notice":
+						$sign = '*';
+						break;
 					case "error":
 						$sign = "!";
 						break;
@@ -713,6 +716,9 @@ abstract class DBSchemaManager {
 						break;
 					case "obsolete":
 						$color = "red";
+						break;
+					case "notice":
+						$color = "orange";
 						break;
 					case "error":
 						$color = "red";

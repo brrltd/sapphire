@@ -126,6 +126,13 @@ class MySQLSchemaManager extends DBSchemaManager {
 	}
 
 	public function checkAndRepairTable($tableName) {
+		// If running PDO and not in emulated mode, check table will fail
+		if($this->database->getConnector() instanceof PDOConnector && !PDOConnector::is_emulate_prepare()) {
+			$this->alterationMessage('CHECK TABLE command disabled for PDO in native mode', 'notice');
+			return true;
+		}
+		
+		// Perform check
 		if (!$this->runTableCheckCommand("CHECK TABLE \"$tableName\"")) {
 			if ($this->runTableCheckCommand("CHECK TABLE \"" . strtolower($tableName) . "\"")) {
 				$this->alterationMessage(
