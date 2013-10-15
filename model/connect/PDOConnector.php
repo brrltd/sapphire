@@ -8,6 +8,14 @@
 class PDOConnector extends DBConnector {
 	
 	/**
+	 * Should ATTR_EMULATE_PREPARES flag be used to emulate prepared statements?
+	 * 
+	 * @config
+	 * @var boolean
+	 */
+	private static $emulate_prepare = false;
+	
+	/**
 	 * The PDO connection instance
 	 * 
 	 * @var PDO 
@@ -112,7 +120,8 @@ class PDOConnector extends DBConnector {
 
 		// Connection commands to be run on every re-connection
 		$options = array(
-			PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8'
+			PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8',
+			PDO::ATTR_EMULATE_PREPARES => Config::inst()->get('PDOConnector', 'emulate_prepare')
 		);
 
 		// May throw a PDOException if fails
