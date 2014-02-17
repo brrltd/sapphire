@@ -22,55 +22,35 @@ class VersionedTest extends SapphireTest {
 	);
 
 	public function testUniqueIndexes() {
-		$table_expectations = array(
+		$tableExpectations = array(
 			'VersionedTest_WithIndexes' =>
-			array('value' => 1, 'message' => 'Unique indexes are unique in main table'),
+				array('value' => true, 'message' => 'Unique indexes are unique in main table'),
 			'VersionedTest_WithIndexes_versions' =>
-			array('value' => 0, 'message' => 'Unique indexes are no longer unique in _versions table'),
+				array('value' => false, 'message' => 'Unique indexes are no longer unique in _versions table'),
 			'VersionedTest_WithIndexes_Live' =>
-			array('value' => 0, 'message' => 'Unique indexes are no longer unique in _Live table'),
+				array('value' => false, 'message' => 'Unique indexes are no longer unique in _Live table'),
 		);
 
-		// Check for presence of all unique indexes
-		$db = DB::getConn();
-		$db_class = get_class($db);
-		$tables = array_keys($table_expectations);
-		switch ($db_class) {
-			case 'MySQLDatabase':
-				$our_indexes = array('UniqA_idx', 'UniqS_idx');
-				foreach ($tables as $t) {
-					$indexes = array_keys($db->indexList($t));
-					sort($indexes);
-					$this->assertEquals(
-							array_values($our_indexes), array_values(array_intersect($indexes, $our_indexes)),
-							"$t has both indexes");
-				}
-				break;
-			case 'SQLite3Database':
-				$our_indexes = array('"UniqA"', '"UniqS"');
-				foreach ($tables as $t) {
-					$indexes = array_values($db->indexList($t));
-					sort($indexes);
-					$this->assertEquals(array_values($our_indexes),
-							array_values(array_intersect(array_values($indexes), $our_indexes)), "$t has both indexes");
-				}
-				break;
-			default:
-				$this->markTestSkipped("Test for DBMS $db_class not implemented; skipped.");
-				break;
-		}
+		// Test each table's performance
+		foreach ($tableExpectations as $tableName => $expectation) {
+			$indexes = DB::get_schema()->indexList($tableName);
+			
+			// Check for presence of all unique indexes
+			$indexColumns = array_map(function($index) {
+				return $index['value'];
+			}, $indexes);
+			sort($indexColumns);
+			$expectedColumns = array('"UniqA"', '"UniqS"');
+			$this->assertEquals(
+					array_values($expectedColumns),
+					array_values(array_intersect($indexColumns, $expectedColumns)),
+					"$tableName has both indexes");
 
-		// Check unique -> non-unique conversion
-		foreach ($table_expectations as $table_name => $expectation) {
-			$indexes = $db->indexList($table_name);
-
-			foreach ($indexes as $idx_name => $idx_value) {
-				if (in_array($idx_name, $our_indexes)) {
-					$match_value = preg_match('/unique/', $idx_value);
-					if (false === $match_value) {
-						user_error('preg_match failure');
-					}
-					$this->assertEquals($match_value, $expectation['value'], $expectation['message']);
+			// Check unique -> non-unique conversion
+			foreach ($indexes as $indexKey => $indexSpec) {
+				if (in_array($indexSpec['value'], $expectedColumns)) {
+					$isUnique = $indexSpec['type'] === 'unique';
+					$this->assertEquals($isUnique, $expectation['value'], $expectation['message']);
 				}
 			}
 		}
@@ -515,25 +495,25 @@ class VersionedTest extends SapphireTest {
 	}
 
 	public function testVersionedWithSingleStage() {
-		$tables = DB::tableList();
+		$tables = DB::table_list();
 		$this->assertContains(
-			'VersionedTest_SingleStage', 
-			array_values($tables), 
+			'versionedtest_singlestage', 
+			array_keys($tables), 
 			'Contains base table'
 		);
 		$this->assertContains(
-			'VersionedTest_SingleStage_versions', 
-			array_values($tables), 
+			'versionedtest_singlestage_versions', 
+			array_keys($tables), 
 			'Contains versions table'
 		);
 		$this->assertNotContains(
-			'VersionedTest_SingleStage_Live', 
-			array_values($tables), 
+			'versionedtest_singlestage_live', 
+			array_keys($tables), 
 			'Does not contain separate table with _Live suffix'
 		);
 		$this->assertNotContains(
-			'VersionedTest_SingleStage_Stage', 
-			array_values($tables), 
+			'versionedtest_singlestage_stage', 
+			array_keys($tables), 
 			'Does not contain separate table with _Stage suffix'
 		);
 
