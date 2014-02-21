@@ -136,6 +136,20 @@ class DataQuery {
 	public function setQueriedColumns($queriedColumns) {
 		$this->queriedColumns = $queriedColumns;
 	}
+	
+	/**
+	 * Extract the column from the expression in the form '"Column" = ?' and the form '"Table"."Column"' = ?
+	 * 
+	 * @param string $expression
+	 * @return string|false the column name (unquoted) or false if not found
+	 */
+	protected function getColumnFromExpression($expression) {
+		if (preg_match('/^("(?<table>[^"]+)"\.)?"(?<column>[^"]+)"/', $where, $matches)) {
+			return $matches['column'];
+		} else {
+			return false;
+		}
+	}
 
 	/**
 	 * Ensure that the query is ready to execute.
@@ -158,13 +172,29 @@ class DataQuery {
 
 			foreach ($query->getWhere() as $where) {
 				// Check for just the column, in the form '"Column" = ?' and the form '"Table"."Column"' = ?
-				if (preg_match('/^"([^"]+)"/', $where, $matches) ||
-					preg_match('/^"([^"]+)"\."[^"]+"/', $where, $matches)) {
-					if (!in_array($matches[1], $queriedColumns)) $queriedColumns[] = $matches[1];
+				if (($whereColumn = $this->getColumnFromExpression($where))
+					&& !in_array($whereColumn, $queriedColumns)
+				) {
+					$queriedColumns[] = $whereColumn;
 				}
 			}
 		}
 		else $tableClasses = ClassInfo::ancestry($this->dataClass, true);
+		
+		// Generate the list of additional sort columns required
+		$orderColumns = array();
+		$orderComplex = false; // Flag to indicate a potentially complex order expression
+		foreach($query->getOrderBy() as $orderExpression => $direction) {
+			// Check for just the column, in the form '"Column" = ?' and the form '"Table"."Column"' = ?
+			if (($queryColumn = $this->getColumnFromExpression($orderExpression))
+				&& !in_array($queryColumn, $orderColumns)
+			) {
+				$orderColumns[] = $queryColumn;
+			} else {
+				$orderComplex = true;
+				break;
+			}
+		}
 
 		$tableNames = array_keys($tableClasses);
 		$baseClass = $tableNames[0];
@@ -192,6 +222,24 @@ class DataQuery {
 			} else {
 				$this->selectColumnsFromTable($query, $tableClass);
 				if ($tableClass != $baseClass) $joinTable = true;
+			}
+			
+			// If an order column isn't queried, ensure that the table still is joined
+			if(!$joinTable && $orderColumns && ($tableClass != $baseClass)) {
+				if(!isset($tableFields)) $tableFields = DataObject::database_fields($tableClass);
+				foreach($orderColumns as $orderedColumn => $order) {
+					
+					// Treat function / special cases as indeterminate; Pessimistically join this table
+					if(strpos($orderedColumn, '(') !== false) {
+						$joinTable = true;
+						break;
+					}
+					// Check if this table is required for sorting
+					if (array_key_exists($orderedColumn, $tableFields)) {
+						$joinTable = true;
+						break;
+					}
+				}
 			}
 
 			if ($joinTable) {
